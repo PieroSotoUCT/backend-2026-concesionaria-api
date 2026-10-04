@@ -53,8 +53,30 @@ No se necesitan base de datos, credenciales ni servicios externos.
 | `app/services/` | Reglas de negocio |
 | `app/repositories/` | Colecciones en memoria y consultas |
 
-Los integrantes reales, el numero de grupo y la conformidad docente con
-un equipo de tres personas estan pendientes de confirmar. La guia propone
-un repositorio llamado `backend-2026-grupo-XX`; como aun no se conoce el
-numero, el nombre propuesto para trabajar es `backend-2026-concesionaria`,
+## Trabajo en GitHub
+
+El repositorio publico compartido es
+<https://github.com/PieroSotoUCT/backend-2026-concesionaria>. Cuando `main`
+este publicado, cada integrante puede obtenerlo y crear su propia rama:
+
+```powershell
+git clone https://github.com/PieroSotoUCT/backend-2026-concesionaria.git
+cd backend-2026-concesionaria
+git switch -c feat/vehiculos
+```
+
+Para los otros modulos se usan `feat/clientes-sucursales` y `feat/reservas`
+en lugar de `feat/vehiculos`. Cada persona debe configurar su propia identidad
+de Git, realizar al menos cinco commits propios y significativos, publicar
+su rama y abrir un PR hacia `main`. Antes de integrar, el grupo revisa el
+codigo, las pruebas del modulo y la compatibilidad con `CONTRATO.md`.
+Tras hacer commits en su rama, cada integrante la publica, por ejemplo con
+`git push -u origin feat/vehiculos`, y abre el PR en GitHub. Para subir ramas
+al mismo repositorio, el propietario debe conceder acceso de colaborador a
+las cuentas de sus companeros; un repositorio publico solo permite clonar
+sin ese permiso.
+
+Los nombres reales, el numero de grupo y la conformidad docente con un
+equipo de tres personas estan pendientes de confirmar. La guia propone el
+nombre `backend-2026-grupo-XX`; el nombre elegido sin numero tambien queda
 pendiente de validacion academica.
