@@ -19,7 +19,8 @@
 - Modulos de clientes, sucursales y reservas: a cargo de los companeros.
 - Conexion del vencimiento de reservas con consultas de vehiculos: pendiente
   hasta recibir ese modulo.
-- Nombres de los dos companeros, numero de grupo y autorizacion docente para
-  tres integrantes: pendientes. Piero Soto figura en el contrato y README.
-  Repositorio publico conectado y `main` publicado.
+- Equipo registrado: Piero Soto (base y vehiculos), Gabriel Rivas (clientes y
+  sucursales) y Roberto Gonzalez (reservas). Numero de grupo y autorizacion
+  docente para tres integrantes: pendientes. Repositorio publico conectado
+  y `main` publicado.
 - Fechas de entrega y formula de nota de la guia: confirmar con el docente.

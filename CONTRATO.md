@@ -9,11 +9,11 @@ vehiculos y la base comun. Los otros modulos siguen a cargo de sus responsables.
 | Responsable | Modulo | Seguimiento principal |
 | --- | --- | --- |
 | Piero Soto | Base compartida y vehiculos | Coordinacion, API e integracion |
-| Companero 1 | Clientes y sucursales | Dominio, datos y documentacion |
-| Companero 2 | Reservas | Calidad y pruebas del conjunto |
+| Gabriel Rivas | Clientes y sucursales | Dominio, datos y documentacion |
+| Roberto Gonzalez | Reservas | Calidad y pruebas del conjunto |
 
-Los nombres reales de los dos companeros y la autorizacion docente para un
-grupo de tres estan pendientes. La guia describe grupos de cuatro o cinco.
+La autorizacion docente para un grupo de tres esta pendiente. La guia
+describe grupos de cuatro o cinco.
 
 ## Almacenamiento y campos
 
