@@ -3,8 +3,9 @@
 ## Mi parte: base y vehiculos
 
 - Etapa 1: base terminada y publicada en `origin/main`.
-- Rama: `main`. Commits propios observados: `955e10c` (base) y `a0bc267`
-  (instrucciones de colaboracion). No hay PR todavia.
+- Base publicada desde `main`. Correccion documental en la rama
+  `docs/nombre-piero-soto`, pendiente de integrar. Commits propios de base:
+  `955e10c` y `a0bc267`. No hay PR todavia.
 - Decisiones: cuatro colecciones compartidas por ID, contadores sin reutilizacion,
   errores uniformes y fecha local del servidor. Ver `CONTRATO.md`.
 - Pruebas: instalacion en entorno virtual; inicio de Uvicorn; `/health` 200;
@@ -18,6 +19,7 @@
 - Modulos de clientes, sucursales y reservas: a cargo de los companeros.
 - Conexion del vencimiento de reservas con consultas de vehiculos: pendiente
   hasta recibir ese modulo.
-- Nombres reales, numero de grupo y autorizacion docente para tres integrantes:
-  pendientes. Repositorio publico conectado y `main` publicado.
+- Nombres de los dos companeros, numero de grupo y autorizacion docente para
+  tres integrantes: pendientes. Piero Soto figura en el contrato y README.
+  Repositorio publico conectado y `main` publicado.
 - Fechas de entrega y formula de nota de la guia: confirmar con el docente.

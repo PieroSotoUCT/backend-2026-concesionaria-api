@@ -76,7 +76,9 @@ al mismo repositorio, el propietario debe conceder acceso de colaborador a
 las cuentas de sus companeros; un repositorio publico solo permite clonar
 sin ese permiso.
 
-Los nombres reales, el numero de grupo y la conformidad docente con un
-equipo de tres personas estan pendientes de confirmar. La guia propone el
+Piero Soto desarrolla la base compartida y vehiculos, y coordina la API y la
+integracion. Los nombres reales de los dos companeros, el numero de grupo y
+la conformidad docente con un equipo de tres personas estan pendientes de
+confirmar. La guia propone el
 nombre `backend-2026-grupo-XX`; el nombre elegido sin numero tambien queda
 pendiente de validacion academica.
