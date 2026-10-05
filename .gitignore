@@ -6,3 +6,8 @@ __pycache__/
 .env
 .env.*
 !.env.example
+
+# Referencias locales: no deben publicarse
+[Pp]rompt*.md
+[Pp]romt*.md
+[Rr]ubrica*.md

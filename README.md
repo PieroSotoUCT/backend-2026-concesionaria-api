@@ -107,12 +107,12 @@ pendientes de la integracion del equipo.
 ## Trabajo en GitHub
 
 El repositorio publico compartido es
-<https://github.com/PieroSotoUCT/backend-2026-concesionaria>. Cuando `main`
+<https://github.com/PieroSotoUCT/backend-2026-concesionaria-api>. Cuando `main`
 este publicado, cada integrante puede obtenerlo y crear su propia rama:
 
 ```powershell
-git clone https://github.com/PieroSotoUCT/backend-2026-concesionaria.git
-cd backend-2026-concesionaria
+git clone https://github.com/PieroSotoUCT/backend-2026-concesionaria-api.git
+cd backend-2026-concesionaria-api
 git switch -c feat/vehiculos
 ```
 
