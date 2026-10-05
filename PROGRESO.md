@@ -2,25 +2,27 @@
 
 ## Mi parte: base y vehiculos
 
-- Etapas 1 a 4 terminadas: base, modelo, ejemplos, CRUD, consultas y documentacion.
-- Rama: `feat/vehiculos`. El nuevo remoto contiene los avances hasta la
-  Etapa 3 y la correccion del repositorio; la Etapa 4 queda en commits locales.
-  No hay PR.
+- Etapas 1 a 5 terminadas: base, modelo, ejemplos, CRUD, consultas,
+  documentacion y entrega de mi parte para revision.
+- Rama: `feat/vehiculos`, publicada en el repositorio nuevo. PR #1 abierto
+  hacia `main`: https://github.com/PieroSotoUCT/backend-2026-concesionaria-api/pull/1
+  La fusion requiere revision y autorizacion.
 - Migracion autorizada: repositorio anterior privado; nuevo repositorio
   publico `PieroSotoUCT/backend-2026-concesionaria-api`. Se reprodujeron los
   ocho commits previos sin archivos de referencia, conservando mensajes,
   autores y fechas. Los hashes cambiaron al excluir archivos del historial.
   Los patrones correspondientes estan excluidos por .gitignore.
-- Commits nuevos verificados: `579303e` (modelo), `2ca4a92` (ejemplos),
-  `0d8fa40` (CRUD), `26815be` (consultas). Consultar `git log --oneline`.
+- Cinco commits de desarrollo verificados: `579303e` (modelo y DTO),
+  `2ca4a92` (ejemplos), `0d8fa40` (CRUD), `26815be` (consultas) y
+  `6ba2ea0` (pruebas manuales y documentacion).
 - Decisiones: filtrar, ordenar y paginar; total antes de paginar; empates
   por ID ascendente. Se conservan las reglas de disponibilidad e historial.
 - Pruebas: 15 casos automatizados aprobados con
   `python -m unittest discover -s tests -v`, y 33 solicitudes del archivo
   `tests_manual/vehiculos.http` verificadas en orden con un servidor temporal.
   Instalacion de dependencias comprobada en el entorno virtual nuevo.
-- Siguiente paso: Etapa 5, revision de contribuciones y entrega mediante
-  push y PR con autorizacion; integracion de los otros modulos pendiente.
+- Siguiente paso: revisar y fusionar el PR con autorizacion. Las etapas 6 a 8
+  corresponden a integracion y cierre del equipo cuando lleguen sus modulos.
 
 ## Integracion y pendientes del grupo
 
