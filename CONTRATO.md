@@ -39,6 +39,13 @@ Estados: vehiculo `disponible`, `reservado`, `vendido`; reserva `activa`,
 reservas historicas. Las funciones de cada repositorio leen y escriben las
 mismas colecciones: no hay copias por modulo.
 
+Los ejemplos opcionales de `app/datos_demo.py` usan esas mismas colecciones.
+Con `CONCESIONARIA_DATOS_DEMO=1` al iniciar la API se cargan dos sucursales,
+un cliente ficticio, doce vehiculos y dos reservas: una cancelada para el
+vehiculo 2 y una activa para el vehiculo 3. La carga exige memoria vacia y
+no crea endpoints. Detener y volver a iniciar el proceso restablece los
+ejemplos al mismo estado, con fechas calculadas desde el dia local.
+
 ## Rutas acordadas
 
 | Responsable | Metodo y ruta | Proposito |

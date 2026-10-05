@@ -6,10 +6,10 @@ investigacion de una empresa real.
 
 ## Estado actual
 
-Esta es la base compartida de la Etapa 1. Solo existe `GET /health`.
-Vehiculos, sucursales, clientes y reservas aun no tienen endpoints. El
-contrato y el reparto acordados estan en [CONTRATO.md](CONTRATO.md), y el
-avance real en [PROGRESO.md](PROGRESO.md).
+La base compartida y el modelo de vehiculos de la Etapa 2 estan listos.
+Solo existe `GET /health`: los endpoints de negocio aun no se han agregado.
+El contrato y el reparto acordados estan en [CONTRATO.md](CONTRATO.md), y
+el avance real en [PROGRESO.md](PROGRESO.md).
 
 ## Instalacion en Windows PowerShell
 
@@ -41,6 +41,26 @@ Los datos se guardan exclusivamente en memoria y se pierden al detener el
 servidor. Para esta version academica se ejecuta un solo proceso servidor;
 no uses varios workers porque cada proceso tendria sus propias colecciones.
 No se necesitan base de datos, credenciales ni servicios externos.
+
+## Datos de demostracion opcionales
+
+Para iniciar con ejemplos ficticios, detiene primero el servidor anterior y
+ejecuta en PowerShell:
+
+```powershell
+$env:CONCESIONARIA_DATOS_DEMO = "1"
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Se cargan dos sucursales, un cliente ficticio, doce vehiculos y dos reservas
+de ejemplo. El vehiculo 1 no tiene historial, el 2 tiene una reserva
+cancelada, el 3 tiene una reserva activa y el 8 esta vendido. Sirven para
+probar el modulo de vehiculos cuando sus rutas esten listas; no sustituyen
+las pruebas de los modulos de los companeros. Para repetir desde cero,
+detiene el servidor y ejecuta el mismo comando otra vez. La carga solo
+funciona con memoria vacia y nunca reemplaza registros existentes. Para
+iniciar sin ejemplos, quita la variable en esa ventana con
+`Remove-Item Env:CONCESIONARIA_DATOS_DEMO` antes de iniciar el servidor.
 
 ## Estructura
 

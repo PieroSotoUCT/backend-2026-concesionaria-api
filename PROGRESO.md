@@ -3,16 +3,18 @@
 ## Mi parte: base y vehiculos
 
 - Etapa 1: base terminada y publicada en `origin/main`.
-- Base publicada desde `main`. Correccion documental en la rama
-  `docs/nombre-piero-soto`, pendiente de integrar. Commits propios de base:
-  `955e10c` y `a0bc267`. No hay PR todavia.
-- Decisiones: cuatro colecciones compartidas por ID, contadores sin reutilizacion,
-  errores uniformes y fecha local del servidor. Ver `CONTRATO.md`.
-- Pruebas: instalacion en entorno virtual; inicio de Uvicorn; `/health` 200;
-  OpenAPI con solo `/health`; ruta inexistente 404 y metodo incorrecto 405,
-  ambos con formato uniforme. La validacion 422 espera rutas con DTO.
-- Siguiente paso: al aprobar la Etapa 2, crear `feat/vehiculos` desde `main`
-  y preparar modelo, DTO y datos de demostracion.
+- Etapa 2: modelo, DTO y datos de demostracion terminados en la rama local
+  `feat/vehiculos`. La rama incluye las correcciones locales de nombres;
+  no hay push ni PR de esta rama.
+- Commits observados: `ac70f05` (entidad y DTO); los ejemplos se registran
+  en el commit siguiente de esta rama. Consultar `git log --oneline`.
+- Decisiones: cuatro colecciones compartidas, IDs sin reutilizacion, errores
+  uniformes, Pydantic v2 y carga demo explicita solo con memoria vacia.
+- Pruebas: DTO validos e invalidos; PATCH parcial, nulo y vacio; carga de
+  2 sucursales, 12 vehiculos, 1 cliente y 2 reservas; referencias y estados;
+  rechazo de segunda carga; manejador 422 directo; Uvicorn con ejemplos y
+  `/health` 200. El 422 por HTTP espera los endpoints de la Etapa 3.
+- Siguiente paso: Etapa 3, repositorio, servicio y cinco rutas de vehiculos.
 
 ## Integracion y pendientes del grupo
 

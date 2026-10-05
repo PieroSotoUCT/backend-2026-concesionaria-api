@@ -1,11 +1,18 @@
 """Configuracion de FastAPI y manejo comun de errores."""
 
+import os
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.errores import ErrorAplicacion, cuerpo_error
+
+if os.getenv("CONCESIONARIA_DATOS_DEMO") == "1":
+    from app.datos_demo import cargar_datos_demo
+
+    cargar_datos_demo()
 
 app = FastAPI(
     title="API de concesionaria",
