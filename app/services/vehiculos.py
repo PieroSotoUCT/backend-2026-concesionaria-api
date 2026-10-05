@@ -3,7 +3,7 @@
 from app.domain.vehiculo import EstadoVehiculo, Vehiculo
 from app.errores import ErrorAplicacion
 from app.repositories import vehiculos as repositorio
-from app.schemas.vehiculo import VehiculoActualizar, VehiculoCrear
+from app.schemas.vehiculo import ConsultaVehiculos, VehiculoActualizar, VehiculoCrear
 
 
 def comprobar_sucursal(sucursal_id: int) -> None:
@@ -23,8 +23,36 @@ def crear_vehiculo(entrada: VehiculoCrear) -> dict[str, object]:
     return registro
 
 
-def listar_vehiculos() -> list[dict[str, object]]:
-    return sorted(repositorio.listar(), key=lambda vehiculo: vehiculo["id"])
+def listar_vehiculos(consulta: ConsultaVehiculos) -> dict[str, object]:
+    encontrados = []
+    for vehiculo in repositorio.listar():
+        if consulta.marca is not None and vehiculo["marca"].strip().casefold() != consulta.marca.casefold():
+            continue
+        if consulta.estado is not None and vehiculo["estado"] != consulta.estado.value:
+            continue
+        if consulta.sucursal_id is not None and vehiculo["sucursal_id"] != consulta.sucursal_id:
+            continue
+        if consulta.precio_min is not None and vehiculo["precio"] < consulta.precio_min:
+            continue
+        if consulta.precio_max is not None and vehiculo["precio"] > consulta.precio_max:
+            continue
+        encontrados.append(vehiculo)
+
+    # El ID ascendente tambien resuelve empates del campo elegido.
+    encontrados.sort(key=lambda vehiculo: vehiculo["id"])
+    if consulta.ordenar_por is not None:
+        encontrados.sort(key=lambda vehiculo: vehiculo[consulta.ordenar_por],
+                         reverse=consulta.direccion == "desc")
+
+    total = len(encontrados)
+    inicio = (consulta.pagina - 1) * consulta.limite
+    return {
+        "items": encontrados[inicio:inicio + consulta.limite],
+        "total": total,
+        "pagina": consulta.pagina,
+        "limite": consulta.limite,
+        "total_paginas": (total + consulta.limite - 1) // consulta.limite,
+    }
 
 
 def obtener_vehiculo(id: int) -> dict[str, object]:

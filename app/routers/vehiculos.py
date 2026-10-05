@@ -1,9 +1,13 @@
 """Contrato HTTP de vehiculos; las reglas se delegan al servicio."""
 
-from fastapi import APIRouter, Body, Path, Response
+from typing import Annotated
+
+from fastapi import APIRouter, Body, Path, Query, Response
 
 from app.schemas.error import ErrorRespuesta
-from app.schemas.vehiculo import VehiculoActualizar, VehiculoCrear, VehiculoRespuesta
+from app.schemas.vehiculo import (
+    ConsultaVehiculos, VehiculoActualizar, VehiculoCrear, VehiculoRespuesta, VehiculosPaginados,
+)
 from app.services import vehiculos as servicio
 
 router = APIRouter(prefix="/vehiculos", tags=["Vehiculos"])
@@ -46,16 +50,25 @@ def crear_vehiculo(entrada: VehiculoCrear) -> dict[str, object]:
 
 
 @router.get(
-    "", response_model=list[VehiculoRespuesta],
+    "", response_model=VehiculosPaginados,
     summary="Listar vehiculos",
-    description="Devuelve los vehiculos por ID ascendente, o una lista vacia. "
-                "En esta etapa devuelve la lista completa; filtros, ordenamiento "
-                "seleccionable y paginacion se incorporan en la Etapa 4.",
-    responses={200: {"description": "Lista de vehiculos", "content": {
-        "application/json": {"example": [EJEMPLO_VEHICULO]}}}},
+    description="Combina filtros, luego ordena y finalmente pagina. Los precios son "
+                "inclusivos y precio_min no puede superar precio_max. Sin ordenar_por "
+                "usa ID ascendente; los empates tambien se resuelven por ID ascendente. "
+                "total cuenta coincidencias antes de paginar. Sin coincidencias, "
+                "total_paginas es 0; una pagina fuera del rango conserva los totales "
+                "y devuelve items vacio.",
+    responses={
+        200: {"description": "Pagina de vehiculos", "content": {
+            "application/json": {"example": {
+                "items": [EJEMPLO_VEHICULO], "total": 1, "pagina": 1,
+                "limite": 10, "total_paginas": 1,
+            }}}},
+        422: ERROR_422,
+    },
 )
-def listar_vehiculos() -> list[dict[str, object]]:
-    return servicio.listar_vehiculos()
+def listar_vehiculos(consulta: Annotated[ConsultaVehiculos, Query()]) -> dict[str, object]:
+    return servicio.listar_vehiculos(consulta)
 
 
 @router.get(

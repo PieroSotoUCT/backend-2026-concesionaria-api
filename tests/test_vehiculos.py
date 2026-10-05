@@ -12,13 +12,14 @@ import sys
 import time
 import unittest
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from app.datos_demo import cargar_datos_demo
 from app.errores import ErrorAplicacion
 from app.repositories import datos
 from app.repositories import vehiculos as repositorio
-from app.schemas.vehiculo import VehiculoActualizar
+from app.schemas.vehiculo import ConsultaVehiculos, VehiculoActualizar
 from app.services import vehiculos as servicio
 
 
@@ -155,7 +156,11 @@ class PruebasVehiculosHTTP(unittest.TestCase):
     def test_listado_y_openapi(self):
         estado, lista = self.solicitar("GET", "/vehiculos")
         self.assertEqual(estado, 200)
-        self.assertEqual([v["id"] for v in lista], sorted(v["id"] for v in lista))
+        self.assertEqual([v["id"] for v in lista["items"]], sorted(v["id"] for v in lista["items"]))
+        self.assertEqual(lista["pagina"], 1)
+        self.assertEqual(lista["limite"], 10)
+        self.assertEqual(len(lista["items"]), 10)
+        self.assertGreaterEqual(lista["total"], 12)
         estado, esquema = self.solicitar("GET", "/openapi.json")
         self.assertEqual(estado, 200)
         self.assertEqual(set(esquema["paths"]["/vehiculos"]), {"get", "post"})
@@ -166,6 +171,84 @@ class PruebasVehiculosHTTP(unittest.TestCase):
         propiedades = esquema["components"]["schemas"]["VehiculoActualizar"]["properties"]
         for propiedad in propiedades.values():
             self.assertNotIn('"type": "null"', json.dumps(propiedad))
+        consulta = esquema["paths"]["/vehiculos"]["get"]
+        self.assertEqual({p["name"] for p in consulta["parameters"]}, {
+            "marca", "estado", "sucursal_id", "precio_min", "precio_max",
+            "ordenar_por", "direccion", "pagina", "limite",
+        })
+        self.assertTrue(consulta["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/VehiculosPaginados"))
+
+    def test_filtros_orden_y_paginacion_combinados(self):
+        ids = []
+        for modelo, precio, anio, km, sucursal in (
+            ("A1", 100, 2020, 100, 1), ("B2", 300, 2022, 50, 2),
+            ("C3", 300, 2021, 150, 2), ("D4", 500, 2024, 0, 2),
+            ("E5", 900, 2023, 10, 1),
+        ):
+            estado, creado = self.crear(marca="Consulta", modelo=modelo, precio=precio,
+                                        anio=anio, kilometraje=km, sucursal_id=sucursal)
+            self.assertEqual(estado, 201)
+            ids.append(creado["id"])
+        self.assertEqual(self.solicitar("PATCH", f"/vehiculos/{ids[4]}", {"estado": "vendido"})[0], 200)
+        parametros = {"marca": "  cOnSuLtA  ", "estado": "disponible", "sucursal_id": 2,
+                      "precio_min": 200, "precio_max": 500, "ordenar_por": "precio",
+                      "direccion": "desc", "pagina": 2, "limite": 2}
+        estado, pagina = self.solicitar("GET", "/vehiculos?" + urlencode(parametros))
+        self.assertEqual(estado, 200)
+        self.assertEqual([v["id"] for v in pagina["items"]], [ids[2]])
+        self.assertEqual({k: v for k, v in pagina.items() if k != "items"},
+                         {"total": 3, "pagina": 2, "limite": 2, "total_paginas": 2})
+        parametros["pagina"] = 1
+        _, primera = self.solicitar("GET", "/vehiculos?" + urlencode(parametros))
+        self.assertEqual([v["id"] for v in primera["items"]], [ids[3], ids[1]])
+        parametros["pagina"] = 99
+        _, fuera = self.solicitar("GET", "/vehiculos?" + urlencode(parametros))
+        self.assertEqual(fuera, {"items": [], "total": 3, "pagina": 99, "limite": 2, "total_paginas": 2})
+
+        ordenes = {
+            ("precio", "asc"): [0, 1, 2, 3, 4],
+            ("precio", "desc"): [4, 3, 1, 2, 0],
+            ("anio", "asc"): [0, 2, 1, 4, 3],
+            ("anio", "desc"): [3, 4, 1, 2, 0],
+            ("kilometraje", "asc"): [3, 4, 1, 0, 2],
+            ("kilometraje", "desc"): [2, 0, 1, 4, 3],
+        }
+        for (campo, direccion), indices in ordenes.items():
+            with self.subTest(campo=campo, direccion=direccion):
+                query = urlencode({"marca": "Consulta", "ordenar_por": campo, "direccion": direccion})
+                estado, pagina = self.solicitar("GET", "/vehiculos?" + query)
+                self.assertEqual(estado, 200)
+                self.assertEqual([v["id"] for v in pagina["items"]], [ids[i] for i in indices])
+        _, vendidos = self.solicitar("GET", "/vehiculos?marca=Consulta&estado=vendido")
+        self.assertEqual([v["id"] for v in vendidos["items"]], [ids[4]])
+        _, iguales = self.solicitar("GET", "/vehiculos?marca=Consulta&precio_min=300&precio_max=300")
+        self.assertEqual([v["id"] for v in iguales["items"]], [ids[1], ids[2]])
+        _, parcial = self.solicitar("GET", "/vehiculos?marca=Consul")
+        self.assertEqual(parcial["total"], 0)
+
+    def test_consultas_sin_resultados_y_limites(self):
+        for query in ("marca=MarcaInexistente", "sucursal_id=999999", "precio_max=0"):
+            with self.subTest(query=query):
+                self.assertEqual(self.solicitar("GET", "/vehiculos?" + query),
+                                 (200, {"items": [], "total": 0, "pagina": 1,
+                                        "limite": 10, "total_paginas": 0}))
+        estado, primera = self.solicitar("GET", "/vehiculos?limite=1")
+        self.assertEqual(estado, 200)
+        self.assertEqual(len(primera["items"]), 1)
+        self.assertEqual(primera["total_paginas"], primera["total"])
+        estado, pagina = self.solicitar("GET", "/vehiculos?limite=100")
+        self.assertEqual(estado, 200)
+        self.assertEqual(pagina["total"], len(pagina["items"]))
+
+    def test_parametros_invalidos(self):
+        for query in (
+            "pagina=0", "pagina=abc", "limite=0", "limite=101", "limite=1.5",
+            "direccion=otro", "ordenar_por=marca", "estado=otro", "sucursal_id=0",
+            "precio_min=-1", "precio_max=-1", "precio_min=10&precio_max=1",
+            "precio_min=1.5", "marca=", "marca=%20%20", "marcas=Toyota",
+        ):
+            with self.subTest(query=query):
+                self.comprobar_error(self.solicitar("GET", "/vehiculos?" + query), 422)
 
 
 class PruebasReglasConDatosCompartidos(unittest.TestCase):
@@ -196,4 +279,5 @@ class PruebasReglasConDatosCompartidos(unittest.TestCase):
         copia["precio"] = 1
         self.assertNotEqual(datos.vehiculos[1]["precio"], 1)
         datos.vehiculos.clear()
-        self.assertEqual(servicio.listar_vehiculos(), [])
+        self.assertEqual(servicio.listar_vehiculos(ConsultaVehiculos()),
+                         {"items": [], "total": 0, "pagina": 1, "limite": 10, "total_paginas": 0})

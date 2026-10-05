@@ -1,6 +1,6 @@
 """Datos de entrada y salida del modulo de vehiculos (Pydantic v2)."""
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
 from pydantic.json_schema import SkipJsonSchema
@@ -82,3 +82,25 @@ class VehiculosPaginados(BaseModel):
     pagina: int
     limite: int
     total_paginas: int
+
+
+class ConsultaVehiculos(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    marca: str | None = Field(default=None, min_length=1, max_length=50,
+                             description="Marca exacta, sin distinguir mayusculas")
+    estado: EstadoVehiculo | None = None
+    sucursal_id: int | None = Field(default=None, gt=0)
+    precio_min: int | None = Field(default=None, ge=0, description="Minimo inclusivo en pesos")
+    precio_max: int | None = Field(default=None, ge=0, description="Maximo inclusivo en pesos")
+    ordenar_por: Literal["precio", "anio", "kilometraje"] | None = None
+    direccion: Literal["asc", "desc"] = "asc"
+    pagina: int = Field(default=1, ge=1)
+    limite: int = Field(default=10, ge=1, le=100)
+
+    @model_validator(mode="after")
+    def comprobar_rango(self) -> "ConsultaVehiculos":
+        if self.precio_min is not None and self.precio_max is not None:
+            if self.precio_min > self.precio_max:
+                raise ValueError("precio_min no puede superar precio_max")
+        return self
