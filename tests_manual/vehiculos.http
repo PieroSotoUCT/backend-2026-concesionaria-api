@@ -1,0 +1,182 @@
+# Reiniciar la API con CONCESIONARIA_DATOS_DEMO=1 antes de ejecutar EN ORDEN.
+# Los 12 vehiculos iniciales hacen que las creaciones de este archivo sean 13 y 14.
+# Si haces otras creaciones, reinicia para repetir o usa los IDs devueltos.
+# Cada solicitud incluye el codigo HTTP y el resultado esperado.
+@baseUrl = http://127.0.0.1:8000
+
+### Estado del servidor
+# Esperado: 200
+GET {{baseUrl}}/health
+
+### Primera pagina: 10 items, total 12, total_paginas 2
+# Esperado: 200
+GET {{baseUrl}}/vehiculos
+
+### Filtros + orden + pagina 1: id 9, total 2, total_paginas 2
+# Esperado: 200
+GET {{baseUrl}}/vehiculos?marca=toyota&estado=disponible&sucursal_id=1&precio_min=10000000&precio_max=26000000&ordenar_por=precio&direccion=desc&pagina=1&limite=1
+
+### Misma consulta, pagina 2: id 1 y mismos totales
+# Esperado: 200
+GET {{baseUrl}}/vehiculos?marca=toyota&estado=disponible&sucursal_id=1&precio_min=10000000&precio_max=26000000&ordenar_por=precio&direccion=desc&pagina=2&limite=1
+
+### Segunda pagina por defecto: IDs 11 y 12, total 12
+# Esperado: 200
+GET {{baseUrl}}/vehiculos?pagina=2
+
+### Sin coincidencias: items [], total 0, total_paginas 0
+# Esperado: 200
+GET {{baseUrl}}/vehiculos?marca=MarcaInexistente
+
+### Pagina fuera del rango: items [], total 12, total_paginas 2
+# Esperado: 200
+GET {{baseUrl}}/vehiculos?pagina=99
+
+### Rango contradictorio: VALIDATION_ERROR
+# Esperado: 422
+GET {{baseUrl}}/vehiculos?precio_min=20000000&precio_max=10000000
+
+### Limite invalido: VALIDATION_ERROR
+# Esperado: 422
+GET {{baseUrl}}/vehiculos?limite=101
+
+### Orden invalido: VALIDATION_ERROR
+# Esperado: 422
+GET {{baseUrl}}/vehiculos?ordenar_por=marca
+
+### Crear en sucursal existente: id 13, estado disponible
+# Esperado: 201
+POST {{baseUrl}}/vehiculos
+Content-Type: application/json
+
+{"marca":"Toyota","modelo":"Yaris","anio":2022,"precio":10000000,"kilometraje":20000,"transmision":"manual","condicion":"usado","sucursal_id":1}
+
+### Consultar el creado
+# Esperado: 200
+GET {{baseUrl}}/vehiculos/13
+
+### PATCH parcial: precio 9000000 y sucursal 2; otros campos iguales
+# Esperado: 200
+PATCH {{baseUrl}}/vehiculos/13
+Content-Type: application/json
+
+{"precio":9000000,"sucursal_id":2}
+
+### Null no borra un campo obligatorio
+# Esperado: 422
+PATCH {{baseUrl}}/vehiculos/13
+Content-Type: application/json
+
+{"precio":null}
+
+### No se puede cambiar el ID
+# Esperado: 422
+PATCH {{baseUrl}}/vehiculos/13
+Content-Type: application/json
+
+{"id":50}
+
+### Cuerpo vacio
+# Esperado: 422
+PATCH {{baseUrl}}/vehiculos/13
+Content-Type: application/json
+
+{}
+
+### Sucursal inexistente: no aplica tampoco el nuevo precio
+# Esperado: 404
+PATCH {{baseUrl}}/vehiculos/13
+Content-Type: application/json
+
+{"sucursal_id":999999,"precio":1}
+
+### Confirmar que conserva precio 9000000 y sucursal 2
+# Esperado: 200
+GET {{baseUrl}}/vehiculos/13
+
+### Reservar manualmente esta prohibido
+# Esperado: 400
+PATCH {{baseUrl}}/vehiculos/13
+Content-Type: application/json
+
+{"estado":"reservado"}
+
+### El vehiculo 3 tiene reserva activa: no se puede liberar manualmente
+# Esperado: 400
+PATCH {{baseUrl}}/vehiculos/3
+Content-Type: application/json
+
+{"estado":"disponible"}
+
+### Tampoco se puede vender el reservado
+# Esperado: 409
+PATCH {{baseUrl}}/vehiculos/3
+Content-Type: application/json
+
+{"estado":"vendido"}
+
+### El historial cancelado impide eliminar el vehiculo 2
+# Esperado: 409
+DELETE {{baseUrl}}/vehiculos/2
+
+### El historial activo impide eliminar el vehiculo 3
+# Esperado: 409
+DELETE {{baseUrl}}/vehiculos/3
+
+### Vender el creado, disponible y sin reserva activa
+# Esperado: 200
+PATCH {{baseUrl}}/vehiculos/13
+Content-Type: application/json
+
+{"estado":"vendido"}
+
+### Vendido es final
+# Esperado: 400
+PATCH {{baseUrl}}/vehiculos/13
+Content-Type: application/json
+
+{"estado":"disponible"}
+
+### Eliminar el creado, sin historial: SIN CUERPO
+# Esperado: 204
+DELETE {{baseUrl}}/vehiculos/13
+
+### Ya no existe
+# Esperado: 404
+GET {{baseUrl}}/vehiculos/13
+
+### Nueva creacion: ID 14, no reutiliza el 13
+# Esperado: 201
+POST {{baseUrl}}/vehiculos
+Content-Type: application/json
+
+{"marca":"Suzuki","modelo":"Swift","anio":2024,"precio":14000000,"kilometraje":0,"transmision":"manual","condicion":"nuevo","sucursal_id":1}
+
+### Limpieza del nuevo vehiculo, sin historial
+# Esperado: 204
+DELETE {{baseUrl}}/vehiculos/14
+
+### Crear con sucursal inexistente
+# Esperado: 404
+POST {{baseUrl}}/vehiculos
+Content-Type: application/json
+
+{"marca":"Suzuki","modelo":"Swift","anio":2024,"precio":14000000,"kilometraje":0,"transmision":"manual","condicion":"nuevo","sucursal_id":999999}
+
+### Estado enviado en creacion: campo extra prohibido
+# Esperado: 422
+POST {{baseUrl}}/vehiculos
+Content-Type: application/json
+
+{"marca":"Suzuki","modelo":"Swift","anio":2024,"precio":14000000,"kilometraje":0,"transmision":"manual","condicion":"nuevo","sucursal_id":1,"estado":"vendido"}
+
+### Precio y kilometraje invalidos
+# Esperado: 422
+POST {{baseUrl}}/vehiculos
+Content-Type: application/json
+
+{"marca":"Suzuki","modelo":"Swift","anio":2024,"precio":0,"kilometraje":-1,"transmision":"manual","condicion":"nuevo","sucursal_id":1}
+
+### ID de ruta invalido
+# Esperado: 422
+GET {{baseUrl}}/vehiculos/0
