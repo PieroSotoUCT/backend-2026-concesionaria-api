@@ -1,13 +1,16 @@
 # API de concesionaria
 
-Proyecto academico de Desarrollo de Backend. La concesionaria y sus datos
-son un caso propuesto para practicar una API REST; no corresponden a una
-investigacion de una empresa real.
+Proyecto academico de Desarrollo de Backend. En este caso propuesto, el
+personal de ventas y los encargados de sucursal registran inventario y
+reservas en planillas o mensajes separados. Esto dificulta conocer la
+disponibilidad y puede producir reservas duplicadas. La concesionaria y sus
+datos no corresponden a una investigacion de una empresa real.
 
 ## Estado actual
 
-La Etapa 4 completa los cinco endpoints de vehiculos, sus reglas y las consultas
-con filtros, ordenamiento y paginacion en `feat/vehiculos`.
+Las etapas 1 a 5 completan los cinco endpoints de vehiculos, sus reglas y las
+consultas con filtros, ordenamiento y paginacion en `feat/vehiculos`.
+El PR #1 hacia `main` esta abierto; `main` contiene la base compartida.
 `GET /health` permite comprobar el proceso. Clientes, sucursales y reservas
 siguen pendientes de los aportes de Gabriel y Roberto.
 El contrato y el reparto acordados estan en [CONTRATO.md](CONTRATO.md), y
@@ -64,17 +67,34 @@ funciona con memoria vacia y nunca reemplaza registros existentes. Para
 iniciar sin ejemplos, quita la variable en esa ventana con
 `Remove-Item Env:CONCESIONARIA_DATOS_DEMO` antes de iniciar el servidor.
 
-## Endpoints implementados y pruebas
+## Contrato de endpoints y estado actual
 
-| Metodo y ruta | Resultado correcto | Errores controlados |
-| --- | --- | --- |
-| `POST /vehiculos` | 201, vehiculo disponible con ID nuevo | 404 sucursal; 422 datos |
-| `GET /vehiculos` | 200, items y metadatos de paginacion | 422 parametros invalidos |
-| `GET /vehiculos/{id}` | 200, vehiculo | 404 inexistente; 422 ID invalido |
-| `PATCH /vehiculos/{id}` | 200, vehiculo actualizado parcialmente | 400 estado manual; 404 recurso; 409 conflicto; 422 datos |
-| `DELETE /vehiculos/{id}` | 204 sin cuerpo | 404 inexistente; 409 historial; 422 ID invalido |
+| Metodo y ruta | Funcion | Exito | Estado |
+| --- | --- | --- | --- |
+| `POST /vehiculos` | Crear en una sucursal existente | 201 | Implementado por Piero |
+| `GET /vehiculos` | Listar con filtros, orden y paginacion | 200 | Implementado por Piero |
+| `GET /vehiculos/{id}` | Obtener por ID | 200 | Implementado por Piero |
+| `PATCH /vehiculos/{id}` | Actualizar campos enviados | 200 | Implementado por Piero |
+| `DELETE /vehiculos/{id}` | Eliminar sin historial de reservas | 204 | Implementado por Piero |
+| `POST /sucursales` | Crear sucursal | 201 | Pendiente: Gabriel |
+| `GET /sucursales` | Listar sucursales | 200 | Pendiente: Gabriel |
+| `GET /sucursales/{id}` | Obtener sucursal por ID | 200 | Pendiente: Gabriel |
+| `POST /clientes` | Crear cliente con RUT unico | 201 | Pendiente: Gabriel |
+| `GET /clientes` | Listar clientes | 200 | Pendiente: Gabriel |
+| `GET /clientes/{id}` | Obtener cliente por ID | 200 | Pendiente: Gabriel |
+| `POST /reservas` | Reservar vehiculo disponible | 201 | Pendiente: Roberto |
+| `GET /reservas` | Listar reservas | 200 | Pendiente: Roberto |
+| `GET /reservas/{id}` | Obtener reserva por ID | 200 | Pendiente: Roberto |
+| `PATCH /reservas/{id}` | Cancelar reserva activa | 200 | Pendiente: Roberto |
 
-Los ejemplos y las respuestas de cada operacion se pueden consultar en Swagger.
+`GET /health` comprueba el proceso y no cuenta entre los 15 endpoints de
+negocio acordados. Hoy Swagger muestra los cinco de vehiculos y `/health`;
+las otras diez rutas apareceran cuando se integren los modulos del equipo.
+Los errores de vehiculos incluyen 400 por regla de estado, 404 por recurso o
+sucursal inexistente, 409 por conflicto e historial, y 422 por datos o
+parametros invalidos. Todos los errores controlados usan el formato de
+`CONTRATO.md`. Los DTO, parametros, ejemplos y respuestas de las rutas
+implementadas se pueden consultar en Swagger.
 Sin datos demo ni sucursales cargadas, crear un vehiculo responde 404.
 
 Una consulta completa sobre los ejemplos iniciales:
@@ -101,6 +121,26 @@ Los empates se resuelven por ID ascendente. La respuesta contiene `items`,
 `total`, `pagina`, `limite` y `total_paginas`. Sin coincidencias devuelve
 total y total_paginas en 0. Una pagina posterior al final conserva los
 totales y devuelve items vacio. Parametros desconocidos o invalidos devuelven 422.
+
+### Demostracion breve en Swagger
+
+Inicia el servidor con datos de demostracion y abre `/docs`. Desde una
+instancia nueva, ejecuta estas cuatro operaciones en orden:
+
+1. `POST /vehiculos` con el cuerpo siguiente: responde 201 e ID 13.
+2. `GET /vehiculos/13`: responde 200 con el vehiculo creado.
+3. `PATCH /vehiculos/999` con `{"precio":12000000}`: responde 404 con el
+   formato de error comun.
+4. `GET /vehiculos?marca=toyota&estado=disponible&sucursal_id=1&precio_min=10000000&precio_max=26000000&ordenar_por=precio&direccion=desc&pagina=1&limite=1`:
+   responde 200 con el vehiculo 9, `total=2` y `total_paginas=2`.
+
+```json
+{"marca":"Honda","modelo":"Civic","anio":2022,"precio":15000000,"kilometraje":12000,"transmision":"manual","condicion":"usado","sucursal_id":1}
+```
+
+Las cuatro operaciones muestran dos casos exitosos, un error y una coleccion
+con filtro, orden y paginacion. Reinicia el servidor con ejemplos antes de
+repetir la demostracion.
 
 Para repetir las pruebas desde la raiz, sin iniciar un servidor manualmente:
 
@@ -193,6 +233,12 @@ sin ese permiso.
 | Piero Soto | Base compartida y vehiculos | Coordinacion, API e integracion |
 | Gabriel Rivas | Clientes y sucursales | Dominio, datos y documentacion |
 | Roberto Gonzalez | Reservas | Calidad y pruebas del conjunto |
+
+Las cinco areas de seguimiento de la guia quedan distribuidas asi:
+coordinacion y API/logica de negocio, Piero; dominio y datos, Gabriel;
+calidad y pruebas, Roberto; documentacion e integracion, Piero y Gabriel
+con aportes de los tres. Cada integrante desarrolla, prueba y documenta
+su modulo, y todos deben comprender la API completa para la defensa.
 
 El numero de grupo y la conformidad docente con un equipo de tres personas
 estan pendientes de confirmar. La guia propone el nombre
