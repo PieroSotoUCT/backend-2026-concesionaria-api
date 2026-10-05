@@ -10,9 +10,11 @@ datos no corresponden a una investigacion de una empresa real.
 
 Las etapas 1 a 5 completan los cinco endpoints de vehiculos, sus reglas y las
 consultas con filtros, ordenamiento y paginacion en `feat/vehiculos`.
-El PR #1 hacia `main` esta abierto; `main` contiene la base compartida.
-`GET /health` permite comprobar el proceso. Clientes, sucursales y reservas
-siguen pendientes de los aportes de Gabriel y Roberto.
+El PR #1 hacia `main` esta abierto; `main` contiene la base compartida y
+reservas.
+Roberto integro reservas en `main` mediante el PR #2. Esta rama local ya
+incluye ambos modulos. Clientes y sucursales siguen a cargo de Gabriel.
+`GET /health` permite comprobar el proceso.
 El contrato y el reparto acordados estan en [CONTRATO.md](CONTRATO.md), y
 el avance real en [PROGRESO.md](PROGRESO.md).
 
@@ -82,14 +84,14 @@ iniciar sin ejemplos, quita la variable en esa ventana con
 | `POST /clientes` | Crear cliente con RUT unico | 201 | Pendiente: Gabriel |
 | `GET /clientes` | Listar clientes | 200 | Pendiente: Gabriel |
 | `GET /clientes/{id}` | Obtener cliente por ID | 200 | Pendiente: Gabriel |
-| `POST /reservas` | Reservar vehiculo disponible | 201 | Pendiente: Roberto |
-| `GET /reservas` | Listar reservas | 200 | Pendiente: Roberto |
-| `GET /reservas/{id}` | Obtener reserva por ID | 200 | Pendiente: Roberto |
-| `PATCH /reservas/{id}` | Cancelar reserva activa | 200 | Pendiente: Roberto |
+| `POST /reservas` | Reservar vehiculo disponible | 201 | Implementado por Roberto |
+| `GET /reservas` | Listar reservas | 200 | Implementado por Roberto |
+| `GET /reservas/{id}` | Obtener reserva por ID | 200 | Implementado por Roberto |
+| `PATCH /reservas/{id}` | Cancelar reserva activa | 200 | Implementado por Roberto |
 
 `GET /health` comprueba el proceso y no cuenta entre los 15 endpoints de
-negocio acordados. Hoy Swagger muestra los cinco de vehiculos y `/health`;
-las otras diez rutas apareceran cuando se integren los modulos del equipo.
+negocio acordados. En esta rama Swagger muestra los cinco de vehiculos,
+los cuatro de reservas y `/health`; faltan las seis rutas de Gabriel.
 Los errores de vehiculos incluyen 400 por regla de estado, 404 por recurso o
 sucursal inexistente, 409 por conflicto e historial, y 422 por datos o
 parametros invalidos. Todos los errores controlados usan el formato de
@@ -154,8 +156,9 @@ Comprueban que un error no aplique cambios parciales, que las referencias
 existan, que no se pueda liberar o vender un reservado y que el historial
 impida eliminar. Los casos de estado incoherente y reserva vencida se
 preparan directamente en memoria: no simulan endpoints de reservas.
-La revision automatica de vencimientos y las pruebas entre modulos siguen
-pendientes de la integracion del equipo.
+Reservas ya revisa vencimientos antes de sus propias operaciones; falta
+conectarlo con las consultas y operaciones de vehiculos. Las pruebas completas
+entre modulos siguen pendientes de la integracion del equipo.
 
 Tambien prueban las combinaciones de filtros, los tres campos de orden,
 ambas direcciones, los empates, las paginas fuera de rango y los limites.
@@ -206,7 +209,7 @@ representa los atributos del dominio. No hay llamadas HTTP entre modulos.
 
 El repositorio publico compartido es
 <https://github.com/PieroSotoUCT/backend-2026-concesionaria-api>. `main` contiene
-la base comun. Para obtener la implementacion de Piero:
+la base comun y reservas. Para obtener la implementacion de Piero:
 
 ```powershell
 git clone https://github.com/PieroSotoUCT/backend-2026-concesionaria-api.git
@@ -244,3 +247,64 @@ El numero de grupo y la conformidad docente con un equipo de tres personas
 estan pendientes de confirmar. La guia propone el nombre
 `backend-2026-grupo-XX`; el nombre elegido sin numero tambien queda pendiente
 de validacion academica.
+
+## Modulo de reservas
+
+Responsable: Roberto Gonzalez (PR #2). Usa las colecciones
+compartidas de `app/repositories/datos.py` y sigue [CONTRATO.md](CONTRATO.md).
+
+| Metodo y ruta | Proposito | Respuestas |
+| --- | --- | --- |
+| `POST /reservas` | Reservar un vehiculo disponible | 201, 400, 404, 409, 422 |
+| `GET /reservas` | Listar todas las reservas por ID ascendente | 200 |
+| `GET /reservas/{id}` | Consultar una reserva | 200, 404, 422 |
+| `PATCH /reservas/{id}` | Cancelar: solo acepta `{"estado":"cancelada"}` | 200, 404, 409, 422 |
+
+Campos de entrada de `POST /reservas`: `cliente_id`, `vehiculo_id`,
+`fecha_vencimiento` (`AAAA-MM-DD`) y `monto_reserva` (entero en pesos). El
+servidor asigna `id`, `fecha_reserva` (`date.today()`) y `estado` (`activa`);
+enviarlos da 422, igual que cualquier campo adicional.
+
+### Reglas
+
+- **Crear:** el cliente y el vehiculo deben existir (404). La fecha de
+  vencimiento no puede ser anterior a hoy (400 `INVALID_EXPIRATION_DATE`);
+  hoy mismo es valido. El vehiculo debe estar `disponible` (409
+  `VEHICLE_NOT_AVAILABLE`) y pasa a `reservado`.
+- **Cancelar:** solo una reserva `activa` (409 `STATE_CONFLICT` si ya esta
+  cancelada o vencida). El vehiculo vuelve a `disponible`.
+- **Vencer:** una reserva activa vence cuando `fecha_vencimiento < date.today()`.
+  Pasa a `vencida` y su vehiculo vuelve a `disponible`. La funcion
+  `procesar_vencimientos()` de `app/services/reservas.py` hace esta revision y
+  devuelve cuantas reservas vencio; se ejecuta sola antes de crear, listar,
+  consultar y cancelar reservas. Los vehiculos `vendido` nunca se liberan.
+- Un error no deja cambios parciales: todas las comprobaciones ocurren antes
+  de escribir la reserva y el estado del vehiculo.
+
+Todos los errores usan el formato comun
+`{"error":{"code":"...","message":"...","details":[]}}`.
+
+### Ejemplo en PowerShell
+
+```powershell
+$vence = (Get-Date).AddDays(7).ToString("yyyy-MM-dd")
+$cuerpo = @{ cliente_id = 1; vehiculo_id = 1; fecha_vencimiento = $vence; monto_reserva = 500000 } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/reservas -ContentType "application/json" -Body $cuerpo
+Invoke-RestMethod -Method Patch -Uri http://127.0.0.1:8000/reservas/3 -ContentType "application/json" -Body '{"estado":"cancelada"}'
+```
+
+Antes de reservar deben existir un cliente y un vehiculo. En esta rama se
+pueden cargar con los datos de demostracion (`CONCESIONARIA_DATOS_DEMO=1`).
+El ejemplo requiere iniciar con memoria nueva: ya existen dos reservas de
+demostracion, por lo que la nueva recibe ID 3 y el vehiculo 1 queda libre
+despues de cancelarla.
+
+### Pruebas
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest tests.test_reservas -v
+```
+
+Incluyen pruebas del servicio (disponibilidad, cancelacion, vencimiento sin
+cambios parciales) y pruebas HTTP contra un servidor propio con memoria
+independiente (flujo completo, errores 400/404/409 y validaciones 422).

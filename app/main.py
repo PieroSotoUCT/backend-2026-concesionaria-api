@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.errores import ErrorAplicacion, cuerpo_error
+from app.routers.reservas import router as router_reservas
 from app.routers.vehiculos import router as router_vehiculos
 
 if os.getenv("CONCESIONARIA_DATOS_DEMO") == "1":
@@ -61,6 +62,7 @@ app.add_exception_handler(ErrorAplicacion, manejar_error_aplicacion)
 app.add_exception_handler(RequestValidationError, manejar_validacion)
 app.add_exception_handler(StarletteHTTPException, manejar_http)
 app.include_router(router_vehiculos)
+app.include_router(router_reservas)
 
 
 @app.get(
