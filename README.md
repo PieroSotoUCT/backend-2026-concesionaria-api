@@ -6,7 +6,8 @@ investigacion de una empresa real.
 
 ## Estado actual
 
-La Etapa 3 incorpora los cinco endpoints de vehiculos y sus reglas de negocio.
+La Etapa 4 completa los cinco endpoints de vehiculos, sus reglas y las consultas
+con filtros, ordenamiento y paginacion en `feat/vehiculos`.
 `GET /health` permite comprobar el proceso. Clientes, sucursales y reservas
 siguen pendientes de los aportes de Gabriel y Roberto.
 El contrato y el reparto acordados estan en [CONTRATO.md](CONTRATO.md), y
@@ -68,15 +69,38 @@ iniciar sin ejemplos, quita la variable en esa ventana con
 | Metodo y ruta | Resultado correcto | Errores controlados |
 | --- | --- | --- |
 | `POST /vehiculos` | 201, vehiculo disponible con ID nuevo | 404 sucursal; 422 datos |
-| `GET /vehiculos` | 200, lista completa por ID | Sin parametros en esta etapa |
+| `GET /vehiculos` | 200, items y metadatos de paginacion | 422 parametros invalidos |
 | `GET /vehiculos/{id}` | 200, vehiculo | 404 inexistente; 422 ID invalido |
 | `PATCH /vehiculos/{id}` | 200, vehiculo actualizado parcialmente | 400 estado manual; 404 recurso; 409 conflicto; 422 datos |
 | `DELETE /vehiculos/{id}` | 204 sin cuerpo | 404 inexistente; 409 historial; 422 ID invalido |
 
-En la Etapa 3 el listado es un arreglo JSON. La Etapa 4 incorporara los
-filtros, el ordenamiento y la respuesta paginada acordada en el contrato.
 Los ejemplos y las respuestas de cada operacion se pueden consultar en Swagger.
 Sin datos demo ni sucursales cargadas, crear un vehiculo responde 404.
+
+Una consulta completa sobre los ejemplos iniciales:
+
+```http
+GET /vehiculos?marca=toyota&estado=disponible&sucursal_id=1&precio_min=10000000&precio_max=26000000&ordenar_por=precio&direccion=desc&pagina=1&limite=1
+```
+
+Devuelve el vehiculo 9, `total=2` y `total_paginas=2`; la pagina 2 contiene
+el vehiculo 1. Siempre se filtra primero, luego se ordena y al final se pagina.
+
+| Parametro | Regla |
+| --- | --- |
+| `marca` | Coincidencia exacta, sin distinguir mayusculas ni espacios exteriores |
+| `estado` | disponible, reservado o vendido |
+| `sucursal_id` | Entero positivo; una sucursal sin coincidencias devuelve items vacio |
+| `precio_min`, `precio_max` | Enteros desde 0, limites inclusivos; minimo no mayor que maximo |
+| `ordenar_por` | precio, anio o kilometraje; si se omite, ID ascendente |
+| `direccion` | asc o desc; por defecto asc; se aplica al campo elegido |
+| `pagina` | Entero desde 1; por defecto 1 |
+| `limite` | Entero de 1 a 100; por defecto 10 |
+
+Los empates se resuelven por ID ascendente. La respuesta contiene `items`,
+`total`, `pagina`, `limite` y `total_paginas`. Sin coincidencias devuelve
+total y total_paginas en 0. Una pagina posterior al final conserva los
+totales y devuelve items vacio. Parametros desconocidos o invalidos devuelven 422.
 
 Para repetir las pruebas desde la raiz, sin iniciar un servidor manualmente:
 
@@ -93,6 +117,40 @@ preparan directamente en memoria: no simulan endpoints de reservas.
 La revision automatica de vencimientos y las pruebas entre modulos siguen
 pendientes de la integracion del equipo.
 
+Tambien prueban las combinaciones de filtros, los tres campos de orden,
+ambas direcciones, los empates, las paginas fuera de rango y los limites.
+Para la prueba manual, abre `tests_manual/vehiculos.http` en un cliente
+compatible con archivos HTTP y variables `@baseUrl`, o copia las solicitudes
+a Swagger. Reinicia con ejemplos antes de ejecutar el archivo en orden:
+indica los codigos y resultados esperados y utiliza los IDs nuevos 13 y 14.
+Las solicitudes de ese archivo modifican datos, por lo que una segunda
+demostracion debe comenzar reiniciando el servidor.
+
+## Validaciones y reglas del modulo
+
+| Validacion de datos (422) | Ejemplo rechazado |
+| --- | --- |
+| Marca y modelo: 2 a 50 caracteres | marca de un caracter |
+| Anio: entero entre 1900 y 2100 | 1899 |
+| Precio: entero positivo | 0 o 12.5 |
+| Kilometraje: entero no negativo | -1 |
+| Transmision y condicion enumeradas | transmision otra |
+| Creacion sin ID ni estado del servidor | estado vendido enviado en POST |
+| PATCH sin null, ID, campos extras ni cuerpo vacio | precio null |
+| Parametros de consulta validos | pagina 0, limite 101 o rango invertido |
+
+Las reglas de negocio se comprueban en el servicio: la sucursal debe existir
+(404); reservar o liberar manualmente esta prohibido (400); vender exige
+disponibilidad y ausencia de reserva activa (409 si no se cumple); eliminar
+exige ausencia de cualquier historial de reservas (409 si existe). El estado
+vendido es final. Las comprobaciones ocurren antes de guardar para que un
+error no cambie parcialmente el registro.
+
+El router recibe HTTP y devuelve respuestas documentadas. Los DTO validan
+la forma de los datos. El servicio aplica esas reglas y usa el repositorio
+para consultar o guardar en las colecciones comunes. La entidad Vehiculo
+representa los atributos del dominio. No hay llamadas HTTP entre modulos.
+
 ## Estructura
 
 | Ruta | Responsabilidad |
@@ -107,17 +165,18 @@ pendientes de la integracion del equipo.
 ## Trabajo en GitHub
 
 El repositorio publico compartido es
-<https://github.com/PieroSotoUCT/backend-2026-concesionaria-api>. Cuando `main`
-este publicado, cada integrante puede obtenerlo y crear su propia rama:
+<https://github.com/PieroSotoUCT/backend-2026-concesionaria-api>. `main` contiene
+la base comun. Para obtener la implementacion de Piero:
 
 ```powershell
 git clone https://github.com/PieroSotoUCT/backend-2026-concesionaria-api.git
 cd backend-2026-concesionaria-api
-git switch -c feat/vehiculos
+git switch feat/vehiculos
 ```
 
-Para los otros modulos se usan `feat/clientes-sucursales` y `feat/reservas`
-en lugar de `feat/vehiculos`. Cada persona debe configurar su propia identidad
+Gabriel crea `feat/clientes-sucursales` y Roberto crea `feat/reservas` desde
+`main`, usando `git switch main` y despues `git switch -c nombre-de-su-rama`.
+Cada persona debe configurar su propia identidad
 de Git, realizar al menos cinco commits propios y significativos, publicar
 su rama y abrir un PR hacia `main`. Antes de integrar, el grupo revisa el
 codigo, las pruebas del modulo y la compatibilidad con `CONTRATO.md`.

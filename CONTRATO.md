@@ -82,7 +82,9 @@ Eliminarlo exige que no haya ninguna reserva que lo mencione.
 Por defecto: `pagina=1`, `limite=10`; sin `ordenar_por`, ID ascendente.
 La marca se compara sin distinguir mayusculas y despues de quitar espacios
 de los extremos. Se aplican filtros, luego orden y finalmente paginacion.
-`precio_min` no puede superar `precio_max`.
+`precio_min` no puede superar `precio_max`; ambos son enteros desde 0 y
+los limites son inclusivos. Los empates se resuelven por ID ascendente.
+Los parametros desconocidos o invalidos se rechazan con 422.
 
 La respuesta tiene `items`, `total`, `pagina`, `limite`, `total_paginas`.
 `total` se calcula antes de paginar. Sin resultados, `items=[]` y
