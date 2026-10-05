@@ -3,18 +3,18 @@
 ## Mi parte: base y vehiculos
 
 - Etapa 1: base terminada y publicada en `origin/main`.
-- Etapa 2: modelo, DTO y datos de demostracion terminados en la rama local
-  `feat/vehiculos`. La rama incluye las correcciones locales de nombres;
-  no hay push ni PR de esta rama.
-- Commits observados: `ac70f05` (entidad y DTO); los ejemplos se registran
-  en el commit siguiente de esta rama. Consultar `git log --oneline`.
-- Decisiones: cuatro colecciones compartidas, IDs sin reutilizacion, errores
-  uniformes, Pydantic v2 y carga demo explicita solo con memoria vacia.
-- Pruebas: DTO validos e invalidos; PATCH parcial, nulo y vacio; carga de
-  2 sucursales, 12 vehiculos, 1 cliente y 2 reservas; referencias y estados;
-  rechazo de segunda carga; manejador 422 directo; Uvicorn con ejemplos y
-  `/health` 200. El 422 por HTTP espera los endpoints de la Etapa 3.
-- Siguiente paso: Etapa 3, repositorio, servicio y cinco rutas de vehiculos.
+- Etapas 2 y 3 terminadas: modelo, DTO, ejemplos y cinco endpoints CRUD.
+- Rama local: `feat/vehiculos`, incluye las correcciones de nombres. Sin
+  push ni PR. Commits previos verificados: `ac70f05` (modelo) y `5835a14`
+  (ejemplos). El commit del CRUD se consulta con `git log -1 --oneline`.
+- Decisiones: repositorio consulta colecciones comunes; servicio valida antes
+  de guardar. Estados manuales prohibidos: 400; conflictos de estado o
+  historial: 409. Listado completo provisional hasta la Etapa 4.
+- Pruebas: 12 casos automatizados aprobados con
+  `python -m unittest discover -s tests -v`: CRUD HTTP, errores uniformes,
+  IDs no reutilizados, referencias, PATCH parcial/nulo, rechazo sin cambios
+  parciales, estados incompatibles, historial activo/cancelado/vencido y OpenAPI.
+- Siguiente paso: Etapa 4, filtros, orden, paginacion y coleccion vehiculos.http.
 
 ## Integracion y pendientes del grupo
 

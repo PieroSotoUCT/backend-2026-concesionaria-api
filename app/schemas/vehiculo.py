@@ -2,7 +2,8 @@
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
+from pydantic.json_schema import SkipJsonSchema
 
 from app.domain.vehiculo import Condicion, EstadoVehiculo, Transmision
 
@@ -37,15 +38,17 @@ class VehiculoCrear(BaseModel):
 class VehiculoActualizar(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    marca: str | None = Field(default=None, min_length=2, max_length=50)
-    modelo: str | None = Field(default=None, min_length=2, max_length=50)
-    anio: int | None = Field(default=None, ge=1900, le=2100, strict=True)
-    precio: int | None = Field(default=None, gt=0, strict=True)
-    kilometraje: int | None = Field(default=None, ge=0, strict=True)
-    transmision: Transmision | None = None
-    condicion: Condicion | None = None
-    estado: EstadoVehiculo | None = None
-    sucursal_id: int | None = Field(default=None, gt=0, strict=True)
+    # None representa un campo omitido dentro del DTO. El validador rechaza
+    # null enviado por el cliente; SkipJsonSchema evita anunciarlo en Swagger.
+    marca: str | SkipJsonSchema[None] = Field(default=None, min_length=2, max_length=50)
+    modelo: str | SkipJsonSchema[None] = Field(default=None, min_length=2, max_length=50)
+    anio: StrictInt | SkipJsonSchema[None] = Field(default=None, ge=1900, le=2100)
+    precio: StrictInt | SkipJsonSchema[None] = Field(default=None, gt=0)
+    kilometraje: StrictInt | SkipJsonSchema[None] = Field(default=None, ge=0)
+    transmision: Transmision | SkipJsonSchema[None] = None
+    condicion: Condicion | SkipJsonSchema[None] = None
+    estado: EstadoVehiculo | SkipJsonSchema[None] = None
+    sucursal_id: StrictInt | SkipJsonSchema[None] = Field(default=None, gt=0)
 
     @model_validator(mode="before")
     @classmethod

@@ -6,8 +6,9 @@ investigacion de una empresa real.
 
 ## Estado actual
 
-La base compartida y el modelo de vehiculos de la Etapa 2 estan listos.
-Solo existe `GET /health`: los endpoints de negocio aun no se han agregado.
+La Etapa 3 incorpora los cinco endpoints de vehiculos y sus reglas de negocio.
+`GET /health` permite comprobar el proceso. Clientes, sucursales y reservas
+siguen pendientes de los aportes de Gabriel y Roberto.
 El contrato y el reparto acordados estan en [CONTRATO.md](CONTRATO.md), y
 el avance real en [PROGRESO.md](PROGRESO.md).
 
@@ -55,12 +56,42 @@ $env:CONCESIONARIA_DATOS_DEMO = "1"
 Se cargan dos sucursales, un cliente ficticio, doce vehiculos y dos reservas
 de ejemplo. El vehiculo 1 no tiene historial, el 2 tiene una reserva
 cancelada, el 3 tiene una reserva activa y el 8 esta vendido. Sirven para
-probar el modulo de vehiculos cuando sus rutas esten listas; no sustituyen
+probar el modulo de vehiculos; no sustituyen
 las pruebas de los modulos de los companeros. Para repetir desde cero,
 detiene el servidor y ejecuta el mismo comando otra vez. La carga solo
 funciona con memoria vacia y nunca reemplaza registros existentes. Para
 iniciar sin ejemplos, quita la variable en esa ventana con
 `Remove-Item Env:CONCESIONARIA_DATOS_DEMO` antes de iniciar el servidor.
+
+## Endpoints implementados y pruebas
+
+| Metodo y ruta | Resultado correcto | Errores controlados |
+| --- | --- | --- |
+| `POST /vehiculos` | 201, vehiculo disponible con ID nuevo | 404 sucursal; 422 datos |
+| `GET /vehiculos` | 200, lista completa por ID | Sin parametros en esta etapa |
+| `GET /vehiculos/{id}` | 200, vehiculo | 404 inexistente; 422 ID invalido |
+| `PATCH /vehiculos/{id}` | 200, vehiculo actualizado parcialmente | 400 estado manual; 404 recurso; 409 conflicto; 422 datos |
+| `DELETE /vehiculos/{id}` | 204 sin cuerpo | 404 inexistente; 409 historial; 422 ID invalido |
+
+En la Etapa 3 el listado es un arreglo JSON. La Etapa 4 incorporara los
+filtros, el ordenamiento y la respuesta paginada acordada en el contrato.
+Los ejemplos y las respuestas de cada operacion se pueden consultar en Swagger.
+Sin datos demo ni sucursales cargadas, crear un vehiculo responde 404.
+
+Para repetir las pruebas desde la raiz, sin iniciar un servidor manualmente:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+Las pruebas crean un servidor temporal con ejemplos y lo cierran al terminar.
+Cubren CRUD, IDs sin reutilizacion, PATCH parcial y errores 400/404/409/422.
+Comprueban que un error no aplique cambios parciales, que las referencias
+existan, que no se pueda liberar o vender un reservado y que el historial
+impida eliminar. Los casos de estado incoherente y reserva vencida se
+preparan directamente en memoria: no simulan endpoints de reservas.
+La revision automatica de vencimientos y las pruebas entre modulos siguen
+pendientes de la integracion del equipo.
 
 ## Estructura
 
