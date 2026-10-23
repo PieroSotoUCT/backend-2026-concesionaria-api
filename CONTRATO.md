@@ -8,12 +8,12 @@ vehiculos y la base comun. Los otros modulos siguen a cargo de sus responsables.
 
 | Responsable | Modulo | Seguimiento principal |
 | --- | --- | --- |
-| Yo | Base compartida y vehiculos | Coordinacion, API e integracion |
-| Companero 1 | Clientes y sucursales | Dominio, datos y documentacion |
-| Companero 2 | Reservas | Calidad y pruebas del conjunto |
+| Piero Soto | Base compartida y vehiculos | Coordinacion, API e integracion |
+| Gabriel Rivas | Clientes y sucursales | Dominio, datos y documentacion |
+| Roberto Gonzalez | Reservas | Calidad y pruebas del conjunto |
 
-Los nombres reales y la autorizacion docente para un grupo de tres estan
-pendientes. La guia describe grupos de cuatro o cinco.
+La autorizacion docente para un grupo de tres esta pendiente. La guia
+describe grupos de cuatro o cinco.
 
 ## Almacenamiento y campos
 
@@ -38,6 +38,13 @@ Estados: vehiculo `disponible`, `reservado`, `vendido`; reserva `activa`,
 `automatica`. Sucursal 1:N vehiculos; cliente 1:N reservas; vehiculo 1:N
 reservas historicas. Las funciones de cada repositorio leen y escriben las
 mismas colecciones: no hay copias por modulo.
+
+Los ejemplos opcionales de `app/datos_demo.py` usan esas mismas colecciones.
+Con `CONCESIONARIA_DATOS_DEMO=1` al iniciar la API se cargan dos sucursales,
+un cliente ficticio, doce vehiculos y dos reservas: una cancelada para el
+vehiculo 2 y una activa para el vehiculo 3. La carga exige memoria vacia y
+no crea endpoints. Detener y volver a iniciar el proceso restablece los
+ejemplos al mismo estado, con fechas calculadas desde el dia local.
 
 ## Rutas acordadas
 
@@ -75,7 +82,9 @@ Eliminarlo exige que no haya ninguna reserva que lo mencione.
 Por defecto: `pagina=1`, `limite=10`; sin `ordenar_por`, ID ascendente.
 La marca se compara sin distinguir mayusculas y despues de quitar espacios
 de los extremos. Se aplican filtros, luego orden y finalmente paginacion.
-`precio_min` no puede superar `precio_max`.
+`precio_min` no puede superar `precio_max`; ambos son enteros desde 0 y
+los limites son inclusivos. Los empates se resuelven por ID ascendente.
+Los parametros desconocidos o invalidos se rechazan con 422.
 
 La respuesta tiene `items`, `total`, `pagina`, `limite`, `total_paginas`.
 `total` se calcula antes de paginar. Sin resultados, `items=[]` y
