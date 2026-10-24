@@ -18,12 +18,15 @@ class Cliente:
         self.direccion = direccion
 
     
-    def a_registro(self) ->dict[str, object]:
+    def a_registro(self) -> dict[str, object]:
+        """Convierte la entidad al formato del almacenamiento compartido."""
         return {
             "id": self.id,
             "rut": self.rut,
-            "nombre": self.correo,
+            "nombre": self.nombre,
+            "correo": self.correo,
             "telefono": self.telefono,
             "direccion": self.direccion,
-        }
+    }
+
         
