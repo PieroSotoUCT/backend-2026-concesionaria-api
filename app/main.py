@@ -7,6 +7,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.errores import ErrorAplicacion, cuerpo_error
 from app.routers.reservas import router as router_reservas
+from app.routers.clientes import router as router_clientes
 
 app = FastAPI(
     title="API de concesionaria",
@@ -54,6 +55,7 @@ app.add_exception_handler(ErrorAplicacion, manejar_error_aplicacion)
 app.add_exception_handler(RequestValidationError, manejar_validacion)
 app.add_exception_handler(StarletteHTTPException, manejar_http)
 app.include_router(router_reservas)
+app.include_router(router_clientes)
 
 
 @app.get(
