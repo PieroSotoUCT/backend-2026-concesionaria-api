@@ -44,10 +44,11 @@ Invoke-RestMethod http://127.0.0.1:8000/health
 Debe responder `{"estado":"ok"}`. Swagger esta en
 <http://127.0.0.1:8000/docs>.
 
-Los datos se guardan exclusivamente en memoria y se pierden al detener el
-servidor. Para esta version academica se ejecuta un solo proceso servidor;
-no uses varios workers porque cada proceso tendria sus propias colecciones.
-No se necesitan base de datos, credenciales ni servicios externos.
+Los datos se guardan mediante SQLAlchemy. Por defecto se usa SQLite en
+`concesionaria.db`; se puede configurar otra URL con
+`CONCESIONARIA_DATABASE_URL`. Las tablas se crean con `alembic upgrade head`.
+Las operaciones que modifican reserva y vehiculo comparten una transaccion,
+por lo que un error no deja cambios parciales.
 
 ## Datos de demostracion opcionales
 
@@ -144,9 +145,10 @@ Las cuatro operaciones muestran dos casos exitosos, un error y una coleccion
 con filtro, orden y paginacion. Reinicia el servidor con ejemplos antes de
 repetir la demostracion.
 
-Para repetir las pruebas desde la raiz, sin iniciar un servidor manualmente:
+Para aplicar la migracion y repetir las pruebas desde la raiz:
 
 ```powershell
+python -m alembic upgrade head
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 

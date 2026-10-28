@@ -17,9 +17,10 @@ describe grupos de cuatro o cinco.
 
 ## Almacenamiento y campos
 
-`app/repositories/datos.py` contiene los cuatro diccionarios compartidos.
-Cada clave es un ID entero; cada valor es un diccionario con los campos de la
-tabla. `siguiente_id(nombre_coleccion)` aumenta el contador correspondiente.
+Las cuatro entidades se persisten mediante modelos SQLAlchemy en una base
+configurable con `CONCESIONARIA_DATABASE_URL` (por defecto, SQLite local).
+Las relaciones se declaran con claves foraneas y los IDs son asignados por la
+base de datos; no se mantienen colecciones de negocio en memoria.
 Los IDs eliminados no se reutilizan. Las fechas se guardan como `date` de
 Python, los montos como enteros en pesos chilenos y los estados como texto.
 Se usa la fecha local de la maquina que ejecuta la API (`date.today()`) en
@@ -36,8 +37,9 @@ con el reloj y la zona horaria local configurados correctamente.
 Estados: vehiculo `disponible`, `reservado`, `vendido`; reserva `activa`,
 `cancelada`, `vencida`; condicion `nuevo`, `usado`; transmision `manual`,
 `automatica`. Sucursal 1:N vehiculos; cliente 1:N reservas; vehiculo 1:N
-reservas historicas. Las funciones de cada repositorio leen y escriben las
-mismas colecciones: no hay copias por modulo.
+reservas historicas. Las funciones de cada repositorio usan la misma sesion
+ORM: no hay copias por modulo. Las migraciones versionadas viven en
+`alembic/`.
 
 Los ejemplos opcionales de `app/datos_demo.py` usan esas mismas colecciones.
 Con `CONCESIONARIA_DATOS_DEMO=1` al iniciar la API se cargan dos sucursales,
