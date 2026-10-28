@@ -8,13 +8,19 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.errores import ErrorAplicacion, cuerpo_error
+from app.db import initialize_database
 from app.routers.reservas import router as router_reservas
 from app.routers.vehiculos import router as router_vehiculos
+from app.routers.clientes import router as router_clientes
+from app.routers.sucursales import router as router_sucursales
+
+initialize_database()
 
 if os.getenv("CONCESIONARIA_DATOS_DEMO") == "1":
     from app.datos_demo import cargar_datos_demo
 
     cargar_datos_demo()
+
 
 app = FastAPI(
     title="API de concesionaria",
@@ -63,6 +69,8 @@ app.add_exception_handler(RequestValidationError, manejar_validacion)
 app.add_exception_handler(StarletteHTTPException, manejar_http)
 app.include_router(router_vehiculos)
 app.include_router(router_reservas)
+app.include_router(router_clientes)
+app.include_router(router_sucursales)
 
 
 @app.get(
