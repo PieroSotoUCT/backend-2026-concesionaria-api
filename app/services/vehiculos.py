@@ -1,5 +1,7 @@
 """Operaciones y reglas de negocio del modulo de vehiculos."""
 
+from typing import cast
+
 from app.domain.vehiculo import EstadoVehiculo, Vehiculo
 from app.errores import ErrorAplicacion
 from app.repositories import vehiculos as repositorio
@@ -29,15 +31,17 @@ def listar_vehiculos(consulta: ConsultaVehiculos) -> dict[str, object]:
     procesar_vencimientos()
     encontrados = []
     for vehiculo in repositorio.listar():
-        if consulta.marca is not None and vehiculo["marca"].strip().casefold() != consulta.marca.casefold():
+        marca = cast(str, vehiculo["marca"])
+        precio = cast(int, vehiculo["precio"])
+        if consulta.marca is not None and marca.strip().casefold() != consulta.marca.casefold():
             continue
         if consulta.estado is not None and vehiculo["estado"] != consulta.estado.value:
             continue
         if consulta.sucursal_id is not None and vehiculo["sucursal_id"] != consulta.sucursal_id:
             continue
-        if consulta.precio_min is not None and vehiculo["precio"] < consulta.precio_min:
+        if consulta.precio_min is not None and precio < consulta.precio_min:
             continue
-        if consulta.precio_max is not None and vehiculo["precio"] > consulta.precio_max:
+        if consulta.precio_max is not None and precio > consulta.precio_max:
             continue
         encontrados.append(vehiculo)
 
