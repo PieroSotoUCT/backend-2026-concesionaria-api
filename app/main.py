@@ -1,5 +1,7 @@
 """Configuracion de FastAPI y manejo comun de errores."""
 
+import os
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -55,6 +57,7 @@ def manejar_http(_solicitud: Request, error: StarletteHTTPException) -> JSONResp
 app.add_exception_handler(ErrorAplicacion, manejar_error_aplicacion)
 app.add_exception_handler(RequestValidationError, manejar_validacion)
 app.add_exception_handler(StarletteHTTPException, manejar_http)
+app.include_router(router_vehiculos)
 app.include_router(router_reservas)
 app.include_router(router_clientes)
 app.include_router(router_sucursales)

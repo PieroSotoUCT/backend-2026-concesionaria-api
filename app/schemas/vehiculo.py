@@ -1,0 +1,106 @@
+"""Datos de entrada y salida del modulo de vehiculos (Pydantic v2)."""
+
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
+from pydantic.json_schema import SkipJsonSchema
+
+from app.domain.vehiculo import Condicion, EstadoVehiculo, Transmision
+
+
+class VehiculoCrear(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "marca": "Toyota",
+                "modelo": "Yaris",
+                "anio": 2022,
+                "precio": 10990000,
+                "kilometraje": 23000,
+                "transmision": "manual",
+                "condicion": "usado",
+                "sucursal_id": 1,
+            }
+        },
+    )
+
+    marca: str = Field(min_length=2, max_length=50)
+    modelo: str = Field(min_length=2, max_length=50)
+    anio: int = Field(ge=1900, le=2100, strict=True)
+    precio: int = Field(gt=0, strict=True)
+    kilometraje: int = Field(ge=0, strict=True)
+    transmision: Transmision
+    condicion: Condicion
+    sucursal_id: int = Field(gt=0, strict=True)
+
+
+class VehiculoActualizar(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    # None representa un campo omitido dentro del DTO. El validador rechaza
+    # null enviado por el cliente; SkipJsonSchema evita anunciarlo en Swagger.
+    marca: str | SkipJsonSchema[None] = Field(default=None, min_length=2, max_length=50)
+    modelo: str | SkipJsonSchema[None] = Field(default=None, min_length=2, max_length=50)
+    anio: StrictInt | SkipJsonSchema[None] = Field(default=None, ge=1900, le=2100)
+    precio: StrictInt | SkipJsonSchema[None] = Field(default=None, gt=0)
+    kilometraje: StrictInt | SkipJsonSchema[None] = Field(default=None, ge=0)
+    transmision: Transmision | SkipJsonSchema[None] = None
+    condicion: Condicion | SkipJsonSchema[None] = None
+    estado: EstadoVehiculo | SkipJsonSchema[None] = None
+    sucursal_id: StrictInt | SkipJsonSchema[None] = Field(default=None, gt=0)
+
+    @model_validator(mode="before")
+    @classmethod
+    def rechazar_vacios_y_nulos(cls, datos: Any) -> Any:
+        if isinstance(datos, dict):
+            if not datos:
+                raise ValueError("Indica al menos un campo para actualizar")
+            if any(valor is None for valor in datos.values()):
+                raise ValueError("No se permiten valores nulos en PATCH")
+        return datos
+
+
+class VehiculoRespuesta(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    marca: str
+    modelo: str
+    anio: int
+    precio: int
+    kilometraje: int
+    transmision: Transmision
+    condicion: Condicion
+    estado: EstadoVehiculo
+    sucursal_id: int
+
+
+class VehiculosPaginados(BaseModel):
+    items: list[VehiculoRespuesta]
+    total: int
+    pagina: int
+    limite: int
+    total_paginas: int
+
+
+class ConsultaVehiculos(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    marca: str | None = Field(default=None, min_length=1, max_length=50,
+                             description="Marca exacta, sin distinguir mayusculas")
+    estado: EstadoVehiculo | None = None
+    sucursal_id: int | None = Field(default=None, gt=0)
+    precio_min: int | None = Field(default=None, ge=0, description="Minimo inclusivo en pesos")
+    precio_max: int | None = Field(default=None, ge=0, description="Maximo inclusivo en pesos")
+    ordenar_por: Literal["precio", "anio", "kilometraje"] | None = None
+    direccion: Literal["asc", "desc"] = "asc"
+    pagina: int = Field(default=1, ge=1)
+    limite: int = Field(default=10, ge=1, le=100)
+
+    @model_validator(mode="after")
+    def comprobar_rango(self) -> "ConsultaVehiculos":
+        if self.precio_min is not None and self.precio_max is not None:
+            if self.precio_min > self.precio_max:
+                raise ValueError("precio_min no puede superar precio_max")
+        return self
