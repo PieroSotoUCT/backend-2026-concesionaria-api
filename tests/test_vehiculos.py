@@ -5,6 +5,7 @@ Usan un servidor local con memoria independiente; no modifican una API abierta.
 
 import json
 import os
+from datetime import date, timedelta
 from pathlib import Path
 import socket
 import subprocess
@@ -266,6 +267,19 @@ class PruebasReglasConDatosCompartidos(unittest.TestCase):
             servicio.actualizar_vehiculo(3, VehiculoActualizar(estado="vendido", precio=1))
         self.assertEqual(fallo.exception.estado_http, 409)
         self.assertEqual(datos.vehiculos[3], antes)
+
+    def test_listado_procesa_reserva_vencida_y_libera_vehiculo(self):
+        datos.reservas[2]["fecha_vencimiento"] = date.today() - timedelta(days=1)
+        resultado = servicio.listar_vehiculos(ConsultaVehiculos(estado="disponible"))
+        self.assertIn(3, [vehiculo["id"] for vehiculo in resultado["items"]])
+        self.assertEqual(datos.reservas[2]["estado"], "vencida")
+        self.assertEqual(datos.vehiculos[3]["estado"], "disponible")
+
+    def test_venta_procesa_vencimiento_antes_de_comprobar_estado(self):
+        datos.reservas[2]["fecha_vencimiento"] = date.today() - timedelta(days=1)
+        vendido = servicio.actualizar_vehiculo(3, VehiculoActualizar(estado="vendido"))
+        self.assertEqual(vendido["estado"], "vendido")
+        self.assertEqual(datos.reservas[2]["estado"], "vencida")
 
     def test_historial_vencido_tambien_impide_eliminar(self):
         datos.reservas[1]["estado"] = "vencida"

@@ -8,12 +8,9 @@ datos no corresponden a una investigacion de una empresa real.
 
 ## Estado actual
 
-Las etapas 1 a 5 completan los cinco endpoints de vehiculos, sus reglas y las
-consultas con filtros, ordenamiento y paginacion en `feat/vehiculos`.
-El PR #1 hacia `main` esta abierto; `main` contiene la base compartida y
-reservas.
-Roberto integro reservas en `main` mediante el PR #2. Esta rama local ya
-incluye ambos modulos. Clientes y sucursales siguen a cargo de Gabriel.
+Vehiculos y reservas estan fusionados en `main` mediante los PR #1 y #2.
+Gabriel tiene abierto el PR #3 de clientes y sucursales; requiere resolver
+un conflicto antes de integrarlo.
 `GET /health` permite comprobar el proceso.
 El contrato y el reparto acordados estan en [CONTRATO.md](CONTRATO.md), y
 el avance real en [PROGRESO.md](PROGRESO.md).
@@ -90,7 +87,7 @@ iniciar sin ejemplos, quita la variable en esa ventana con
 | `PATCH /reservas/{id}` | Cancelar reserva activa | 200 | Implementado por Roberto |
 
 `GET /health` comprueba el proceso y no cuenta entre los 15 endpoints de
-negocio acordados. En esta rama Swagger muestra los cinco de vehiculos,
+negocio acordados. En `main`, Swagger muestra los cinco de vehiculos,
 los cuatro de reservas y `/health`; faltan las seis rutas de Gabriel.
 Los errores de vehiculos incluyen 400 por regla de estado, 404 por recurso o
 sucursal inexistente, 409 por conflicto e historial, y 422 por datos o
@@ -156,9 +153,9 @@ Comprueban que un error no aplique cambios parciales, que las referencias
 existan, que no se pueda liberar o vender un reservado y que el historial
 impida eliminar. Los casos de estado incoherente y reserva vencida se
 preparan directamente en memoria: no simulan endpoints de reservas.
-Reservas ya revisa vencimientos antes de sus propias operaciones; falta
-conectarlo con las consultas y operaciones de vehiculos. Las pruebas completas
-entre modulos siguen pendientes de la integracion del equipo.
+Reservas y vehiculos revisan los vencimientos antes de consultar o modificar
+la disponibilidad. Las pruebas de los cuatro modulos juntos siguen pendientes
+de la integracion del PR #3.
 
 Tambien prueban las combinaciones de filtros, los tres campos de orden,
 ambas direcciones, los empates, las paginas fuera de rango y los limites.
@@ -209,16 +206,14 @@ representa los atributos del dominio. No hay llamadas HTTP entre modulos.
 
 El repositorio publico compartido es
 <https://github.com/PieroSotoUCT/backend-2026-concesionaria-api>. `main` contiene
-la base comun y reservas. Para obtener la implementacion de Piero:
+la base comun, vehiculos y reservas. Para obtener la version integrada actual:
 
 ```powershell
 git clone https://github.com/PieroSotoUCT/backend-2026-concesionaria-api.git
 cd backend-2026-concesionaria-api
-git switch feat/vehiculos
 ```
 
-Gabriel crea `feat/clientes-sucursales` y Roberto crea `feat/reservas` desde
-`main`, usando `git switch main` y despues `git switch -c nombre-de-su-rama`.
+Gabriel trabaja en `feat/clientes-sucursales` y su PR #3 sigue abierto.
 Cada persona debe configurar su propia identidad
 de Git, realizar al menos cinco commits propios y significativos, publicar
 su rama y abrir un PR hacia `main`. Antes de integrar, el grupo revisa el
@@ -293,7 +288,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/reservas -ContentType 
 Invoke-RestMethod -Method Patch -Uri http://127.0.0.1:8000/reservas/3 -ContentType "application/json" -Body '{"estado":"cancelada"}'
 ```
 
-Antes de reservar deben existir un cliente y un vehiculo. En esta rama se
+Antes de reservar deben existir un cliente y un vehiculo. En `main` se
 pueden cargar con los datos de demostracion (`CONCESIONARIA_DATOS_DEMO=1`).
 El ejemplo requiere iniciar con memoria nueva: ya existen dos reservas de
 demostracion, por lo que la nueva recibe ID 3 y el vehiculo 1 queda libre

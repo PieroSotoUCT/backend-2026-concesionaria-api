@@ -116,8 +116,7 @@ letras a mayusculas; no incluye comprobacion del digito verificador.
 
 La API registra solo routers existentes. Vehiculos consulta sucursales y
 reservas directamente mediante funciones pequenas de su repositorio y las
-colecciones comunes. El modulo de reservas implementara la revision de
-vencimientos: una reserva vence cuando `fecha_vencimiento < date.today()`.
-Al integrarlo, se llamara antes de consultas y operaciones que afecten
-disponibilidad. Hasta entonces, las pruebas aisladas de vehiculos usan datos
-de demostracion coherentes y dejan esa conexion marcada como pendiente.
+colecciones comunes. El modulo de reservas revisa vencimientos: una reserva vence cuando
+`fecha_vencimiento < date.today()`. Vehiculos llama esa revision antes de
+consultar o modificar disponibilidad. La integracion con clientes y sucursales
+se completara cuando se fusione el PR #3 de Gabriel.

@@ -4,6 +4,7 @@ from app.domain.vehiculo import EstadoVehiculo, Vehiculo
 from app.errores import ErrorAplicacion
 from app.repositories import vehiculos as repositorio
 from app.schemas.vehiculo import ConsultaVehiculos, VehiculoActualizar, VehiculoCrear
+from app.services.reservas import procesar_vencimientos
 
 
 def comprobar_sucursal(sucursal_id: int) -> None:
@@ -12,6 +13,7 @@ def comprobar_sucursal(sucursal_id: int) -> None:
 
 
 def crear_vehiculo(entrada: VehiculoCrear) -> dict[str, object]:
+    procesar_vencimientos()
     comprobar_sucursal(entrada.sucursal_id)
     vehiculo = Vehiculo(
         id=repositorio.asignar_id(),
@@ -24,6 +26,7 @@ def crear_vehiculo(entrada: VehiculoCrear) -> dict[str, object]:
 
 
 def listar_vehiculos(consulta: ConsultaVehiculos) -> dict[str, object]:
+    procesar_vencimientos()
     encontrados = []
     for vehiculo in repositorio.listar():
         if consulta.marca is not None and vehiculo["marca"].strip().casefold() != consulta.marca.casefold():
@@ -56,6 +59,7 @@ def listar_vehiculos(consulta: ConsultaVehiculos) -> dict[str, object]:
 
 
 def obtener_vehiculo(id: int) -> dict[str, object]:
+    procesar_vencimientos()
     vehiculo = repositorio.obtener(id)
     if vehiculo is None:
         raise ErrorAplicacion(404, "RESOURCE_NOT_FOUND", "El vehiculo no existe")
