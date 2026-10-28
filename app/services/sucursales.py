@@ -1,42 +1,37 @@
-"""Servicio con las reglas de negocio para las sucursales."""
+"""Operaciones transaccionales de sucursales."""
 
-from app.domain.sucursal import Sucursal
+from sqlalchemy import select
+
+from app.db import SessionLocal, initialize_database
 from app.errores import ErrorAplicacion
-from app.repositories import sucursales as repositorio_sucursales
+from app.models import Sucursal
+from app.schemas.sucursal import SucursalCrear
+
+initialize_database()
+
+
+def _registro(sucursal: Sucursal) -> dict[str, object]:
+    return {campo: getattr(sucursal, campo) for campo in
+            ("id", "nombre", "direccion", "ciudad", "telefono", "horario_atencion")}
+
+
+def crear_sucursal(entrada: SucursalCrear) -> dict[str, object]:
+    with SessionLocal.begin() as session:
+        sucursal = Sucursal(**entrada.model_dump())
+        session.add(sucursal)
+        session.flush()
+        return _registro(sucursal)
 
 
 def listar_sucursales() -> list[dict[str, object]]:
-    """Devuelve todas las sucursales registradas."""
-    return repositorio_sucursales.listar()
+    with SessionLocal() as session:
+        return [_registro(sucursal) for sucursal in
+                session.scalars(select(Sucursal).order_by(Sucursal.id))]
 
 
-def obtener_sucursal(sucursal_id: int) -> dict[str, object]:
-    """Busca una sucursal por su ID."""
-    sucursal = repositorio_sucursales.obtener(sucursal_id)
-
-    if sucursal is None:
-        raise ErrorAplicacion(
-            estado_http=404,
-            codigo="RESOURCE_NOT_FOUND",
-            mensaje=f"No existe una sucursal con ID {sucursal_id}.",
-            detalles=[],
-        )
-
-    return sucursal
-
-
-def crear_sucursal(datos: dict[str, str]) -> dict[str, object]:
-    """Registra una sucursal nueva."""
-    sucursal = Sucursal(
-        id=repositorio_sucursales.asignar_id(),
-        nombre=datos["nombre"],
-        direccion=datos["direccion"],
-        ciudad=datos["ciudad"],
-        telefono=datos["telefono"],
-        horario_atencion=datos["horario_atencion"],
-    )
-
-    registro = sucursal.a_registro()
-    repositorio_sucursales.guardar(registro)
-
-    return registro
+def obtener_sucursal(id: int) -> dict[str, object]:
+    with SessionLocal() as session:
+        sucursal = session.get(Sucursal, id)
+        if sucursal is None:
+            raise ErrorAplicacion(404, "RESOURCE_NOT_FOUND", "La sucursal no existe")
+        return _registro(sucursal)

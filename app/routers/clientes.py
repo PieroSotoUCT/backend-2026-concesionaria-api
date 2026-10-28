@@ -1,30 +1,23 @@
-"""Rutas HTTP para la gestión de clientes."""
+"""Rutas HTTP de clientes."""
 
+from fastapi import APIRouter, Path
 
-
-from fastapi import APIRouter, status
-
-from app.schemas.cliente import ClienteCrear, ClienteRespuesta
-from app.services import clientes as servicio_clientes
-
+from app.schemas.clientes import ClienteCrear, ClienteRespuesta
+from app.services import clientes as servicio
 
 router = APIRouter(prefix="/clientes", tags=["Clientes"])
 
 
-@router.post("", response_model=ClienteRespuesta, status_code=status.HTTP_201_CREATED)
-def crear_cliente(datos: ClienteCrear) -> dict[str, object]:
-    return servicio_clientes.crear_cliente(datos.model_dump())
-
+@router.post("", status_code=201, response_model=ClienteRespuesta)
+def crear_cliente(entrada: ClienteCrear) -> dict[str, object]:
+    return servicio.crear_cliente(entrada)
 
 
 @router.get("", response_model=list[ClienteRespuesta])
-def listar_cliente() -> list[dict[str, object]]:
-    return servicio_clientes.listar_clientes()
+def listar_clientes() -> list[dict[str, object]]:
+    return servicio.listar_clientes()
 
 
-@router.get("/{cliente_id}", response_model=ClienteRespuesta)
-def obtener_cliente(cliente_id: int) -> dict[str, object]:
-    return servicio_clientes.obtener_cliente(cliente_id)
-
-
-
+@router.get("/{id}", response_model=ClienteRespuesta)
+def obtener_cliente(id: int = Path(gt=0)) -> dict[str, object]:
+    return servicio.obtener_cliente(id)

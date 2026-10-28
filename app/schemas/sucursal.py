@@ -1,28 +1,18 @@
-"""Esquemas de validación para las sucursales."""
+"""DTO del modulo de sucursales."""
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class SucursalCrear(BaseModel):
-    """Datos necesarios para registrar una sucursal."""
-
     model_config = ConfigDict(extra="forbid")
 
-    nombre: str = Field(min_length=1, strict=True)
-    direccion: str = Field(min_length=1, strict=True)
-    ciudad: str = Field(min_length=1, strict=True)
-    telefono: str = Field(min_length=1, strict=True)
-    horario_atencion: str = Field(min_length=1, strict=True)
+    nombre: str = Field(min_length=2, max_length=100)
+    direccion: str = Field(min_length=1, max_length=200)
+    ciudad: str = Field(min_length=2, max_length=100)
+    telefono: str = Field(min_length=1, max_length=30)
+    horario_atencion: str = Field(min_length=1, max_length=120)
 
 
-class SucursalRespuesta(BaseModel):
-    """Estructura de respuesta de una sucursal."""
+class SucursalRespuesta(SucursalCrear):
+    id: int
 
-    model_config = ConfigDict(extra="forbid")
-
-    id: int = Field(gt=0, strict=True)
-    nombre: str
-    direccion: str
-    ciudad: str
-    telefono: str
-    horario_atencion: str

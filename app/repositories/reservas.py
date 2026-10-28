@@ -1,52 +1,36 @@
-"""Consultas de reservas sobre las colecciones compartidas."""
+"""Consultas ORM de reservas y relaciones de disponibilidad."""
 
-from app.repositories import datos
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-
-def asignar_id() -> int:
-    return datos.siguiente_id("reservas")
-
-
-def listar() -> list[dict[str, object]]:
-    return [dict(registro) for registro in datos.reservas.values()]
+from app.models import Cliente, Reserva, Vehiculo
 
 
-def listar_activas() -> list[dict[str, object]]:
-    return [
-        dict(registro)
-        for registro in datos.reservas.values()
-        if registro["estado"] == "activa"
-    ]
+def listar(session: Session) -> list[Reserva]:
+    return list(session.scalars(select(Reserva).order_by(Reserva.id)))
 
 
-def obtener(id: int) -> dict[str, object] | None:
-    registro = datos.reservas.get(id)
-    return dict(registro) if registro is not None else None
+def listar_activas(session: Session) -> list[Reserva]:
+    return list(session.scalars(select(Reserva).where(Reserva.estado == "activa")))
 
 
-def guardar(registro: dict[str, object]) -> None:
-    # Guardar una copia evita modificar la memoria por accidente desde otra capa.
-    datos.reservas[registro["id"]] = dict(registro)
+def obtener(session: Session, id: int) -> Reserva | None:
+    return session.get(Reserva, id)
 
 
-def cliente_existe(cliente_id: int) -> bool:
-    return cliente_id in datos.clientes
+def cliente_existe(session: Session, cliente_id: int) -> bool:
+    return session.get(Cliente, cliente_id) is not None
 
 
-def obtener_vehiculo(vehiculo_id: int) -> dict[str, object] | None:
-    registro = datos.vehiculos.get(vehiculo_id)
-    return dict(registro) if registro is not None else None
+def obtener_vehiculo(session: Session, vehiculo_id: int) -> Vehiculo | None:
+    return session.get(Vehiculo, vehiculo_id)
 
 
-def cambiar_estado_vehiculo(vehiculo_id: int, estado: str) -> None:
-    """Unico punto donde reservas escribe el estado de un vehiculo."""
-    datos.vehiculos[vehiculo_id]["estado"] = estado
-
-
-def tiene_otra_reserva_activa(vehiculo_id: int, excepto_id: int) -> bool:
-    return any(
-        reserva["vehiculo_id"] == vehiculo_id
-        and reserva["estado"] == "activa"
-        and reserva["id"] != excepto_id
-        for reserva in datos.reservas.values()
-    )
+def tiene_otra_reserva_activa(session: Session, vehiculo_id: int, excepto_id: int) -> bool:
+    return session.scalar(
+        select(Reserva.id).where(
+            Reserva.vehiculo_id == vehiculo_id,
+            Reserva.estado == "activa",
+            Reserva.id != excepto_id,
+        ).limit(1)
+    ) is not None

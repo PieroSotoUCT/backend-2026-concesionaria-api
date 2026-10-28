@@ -1,23 +1,24 @@
-"""Colecciones compartidas por los modulos del equipo.
+"""Compatibilidad para inicializacion de la base ORM.
 
-Los registros usan las claves descritas en CONTRATO.md. Al reiniciar el
-proceso se pierden todos los datos y los contadores vuelven a cero.
+Las rutas y servicios no usan colecciones en memoria. Este modulo conserva
+solo el punto de importacion historico y ya no expone registros mutables.
 """
 
-vehiculos: dict[int, dict[str, object]] = {}
-sucursales: dict[int, dict[str, object]] = {}
-clientes: dict[int, dict[str, object]] = {}
-reservas: dict[int, dict[str, object]] = {}
-
-contadores = {
-    "vehiculos": 0,
-    "sucursales": 0,
-    "clientes": 0,
-    "reservas": 0,
-}
+from app.db import initialize_database
 
 
-def siguiente_id(nombre_coleccion: str) -> int:
-    """Asigna un ID nuevo sin reutilizar los eliminados."""
-    contadores[nombre_coleccion] += 1
-    return contadores[nombre_coleccion]
+def siguiente_id(_nombre_coleccion: str) -> int:
+    raise RuntimeError("Los IDs son asignados por la base de datos")
+
+
+def limpiar_base() -> None:
+    """Elimina registros mediante una transaccion, principalmente para tests."""
+    from app.db import SessionLocal
+    from app.models import Cliente, Reserva, Sucursal, Vehiculo
+
+    with SessionLocal.begin() as session:
+        for modelo in (Reserva, Vehiculo, Cliente, Sucursal):
+            session.query(modelo).delete()
+
+
+initialize_database()
