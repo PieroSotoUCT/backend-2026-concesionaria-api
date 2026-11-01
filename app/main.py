@@ -1,6 +1,7 @@
 """Configuracion de FastAPI y manejo comun de errores."""
 
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -8,24 +9,25 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.errores import ErrorAplicacion, cuerpo_error
-from app.db import initialize_database
 from app.routers.reservas import router as router_reservas
 from app.routers.vehiculos import router as router_vehiculos
 from app.routers.clientes import router as router_clientes
 from app.routers.sucursales import router as router_sucursales
 
-initialize_database()
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    if os.getenv("CONCESIONARIA_DATOS_DEMO") == "1":
+        from app.datos_demo import cargar_datos_demo
 
-if os.getenv("CONCESIONARIA_DATOS_DEMO") == "1":
-    from app.datos_demo import cargar_datos_demo
-
-    cargar_datos_demo()
+        cargar_datos_demo()
+    yield
 
 
 app = FastAPI(
     title="API de concesionaria",
-    description="Proyecto academico con almacenamiento en memoria. Modulos en desarrollo.",
+    description="Proyecto academico con persistencia SQLAlchemy y migraciones Alembic.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 

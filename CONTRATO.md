@@ -1,8 +1,8 @@
 # Contrato compartido de la API
 
 Este documento coordina el trabajo de los tres integrantes. La entrega final
-del grupo tendra 15 endpoints de negocio; en esta sesion se implementan solo
-vehiculos y la base comun. Los otros modulos siguen a cargo de sus responsables.
+del grupo tiene 15 endpoints de negocio. Cada modulo sigue a cargo de su
+responsable y Piero coordina la base comun.
 
 ## Reparto
 
@@ -41,12 +41,39 @@ reservas historicas. Las funciones de cada repositorio usan la misma sesion
 ORM: no hay copias por modulo. Las migraciones versionadas viven en
 `alembic/`.
 
-Los ejemplos opcionales de `app/datos_demo.py` usan esas mismas colecciones.
+Los ejemplos opcionales de `app/datos_demo.py` usan el mismo ORM.
 Con `CONCESIONARIA_DATOS_DEMO=1` al iniciar la API se cargan dos sucursales,
-un cliente ficticio, doce vehiculos y dos reservas: una cancelada para el
+un cliente ficticio, tres vehiculos y dos reservas: una cancelada para el
 vehiculo 2 y una activa para el vehiculo 3. La carga exige memoria vacia y
-no crea endpoints. Detener y volver a iniciar el proceso restablece los
-ejemplos al mismo estado, con fechas calculadas desde el dia local.
+no crea endpoints. Los registros persisten al reiniciar; volver a cargar los
+ejemplos requiere una base vacia de prueba.
+
+## Sesiones, transacciones y migracion
+
+La URL unica de la API y Alembic es `CONCESIONARIA_DATABASE_URL`, leida en
+`app/db.py`; sin esa variable se usa `sqlite:///./concesionaria.db`. El archivo
+`.env.example` es una referencia, no se carga automaticamente. En PowerShell
+se establece `$env:CONCESIONARIA_DATABASE_URL` antes de migrar o iniciar.
+`alembic upgrade head` prepara el esquema. Importar modulos no crea tablas;
+`initialize_database()` permanece temporalmente como funcion publica de
+compatibilidad, sin efecto de creacion.
+
+Cada servicio abre y cierra la sesion ORM por operacion. Para escrituras usa
+`with SessionLocal.begin() as session`, que confirma al salir sin error y
+revierte si hay excepcion. Para lecturas usa `with SessionLocal() as session`.
+Los repositorios reciben esa misma `session` como primer argumento: por
+ejemplo, `repositorio.obtener(session, id)` y
+`repositorio.tiene_historial_reservas(session, id)`. No abren sesiones ni
+confirman transacciones. Asi, una reserva y el cambio de estado del vehiculo
+pueden confirmarse juntos. Una futura interfaz de vencimientos debe aceptar
+la sesion del servicio que la llama para mantener esa atomicidad.
+
+SQLite activa `PRAGMA foreign_keys=ON` en cada conexion de la API. Las pruebas
+se ejecutan sobre una SQLite temporal: `tests/soporte_bd.py` proporciona
+`entorno_base_temporal()`, que entrega un diccionario de entorno y la ruta de
+la base. Ese mismo entorno se pasa a Alembic, procesos de fixtures ORM y
+servidor HTTP; el contexto elimina la base al terminar. No se usa
+`limpiar_base()` sobre `concesionaria.db`.
 
 ## Rutas acordadas
 

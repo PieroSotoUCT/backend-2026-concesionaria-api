@@ -2,15 +2,12 @@
 
 from sqlalchemy import select
 
-from app.db import SessionLocal, initialize_database
+from app.db import SessionLocal
 from app.domain.vehiculo import EstadoVehiculo
 from app.errores import ErrorAplicacion
 from app.models import Vehiculo
 from app.repositories import vehiculos as repositorio
 from app.schemas.vehiculo import ConsultaVehiculos, VehiculoActualizar, VehiculoCrear
-
-initialize_database()
-
 
 def _registro(vehiculo: Vehiculo) -> dict[str, object]:
     return {campo: getattr(vehiculo, campo) for campo in (
