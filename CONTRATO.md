@@ -21,7 +21,8 @@ Las cuatro entidades se persisten mediante modelos SQLAlchemy en una base
 configurable con `CONCESIONARIA_DATABASE_URL` (por defecto, SQLite local).
 Las relaciones se declaran con claves foraneas y los IDs son asignados por la
 base de datos; no se mantienen colecciones de negocio en memoria.
-Los IDs eliminados no se reutilizan. Las fechas se guardan como `date` de
+Los IDs eliminados no se reutilizan despues de la revision
+`20261101_ids_sin_reuso` de SQLite. Las fechas se guardan como `date` de
 Python, los montos como enteros en pesos chilenos y los estados como texto.
 Se usa la fecha local de la maquina que ejecuta la API (`date.today()`) en
 todas las operaciones que dependen de hoy. La demostracion debe ejecutarse
@@ -143,10 +144,13 @@ letras a mayusculas; no incluye comprobacion del digito verificador.
 
 ## Conexion de modulos
 
-La API registra solo routers existentes. Vehiculos consulta sucursales y
-reservas directamente mediante funciones pequenas de su repositorio y las
-colecciones comunes. El modulo de reservas implementara la revision de
-vencimientos: una reserva vence cuando `fecha_vencimiento < date.today()`.
-Al integrarlo, se llamara antes de consultas y operaciones que afecten
-disponibilidad. Hasta entonces, las pruebas aisladas de vehiculos usan datos
-de demostracion coherentes y dejan esa conexion marcada como pendiente.
+La API registra los cuatro routers. Vehiculos consulta sucursales, reservas y
+vehiculos mediante `app/repositories/vehiculos.py`; el servicio aplica las
+reglas y convierte el modelo ORM a respuesta con `_registro`. Reservas
+procesa vencimientos cuando `fecha_vencimiento < date.today()`. Vehiculos
+llama la funcion publica antes de listar, consultar, actualizar y eliminar.
+Esa funcion abre una transaccion previa y separada; Roberto debe ofrecer una
+variante que reciba la sesion activa para unificarla con la operacion de
+vehiculos. Los servicios de clientes y sucursales aun ejecutan consultas ORM
+directamente: Gabriel debe trasladarlas a sus repositorios. Estas tareas no
+cambian las rutas ni los campos acordados.
