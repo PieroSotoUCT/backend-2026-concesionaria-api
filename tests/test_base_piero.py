@@ -17,6 +17,87 @@ RAIZ = Path(__file__).resolve().parents[1]
 
 
 class PruebasBasePiero(unittest.TestCase):
+    def test_migracion_de_base_existente_conserva_datos_e_ids(self):
+        with entorno_base_temporal() as (entorno, _ruta):
+            subprocess.run(
+                [sys.executable, "-m", "alembic", "upgrade", "20261028_orm"],
+                cwd=RAIZ, env=entorno, check=True, capture_output=True, text=True,
+            )
+            sembrar = """
+from datetime import date, timedelta
+from app.db import SessionLocal
+from app.models import Cliente, Reserva, Sucursal, Vehiculo
+with SessionLocal.begin() as session:
+    sucursal = Sucursal(nombre='Centro', direccion='A', ciudad='Temuco',
+        telefono='1', horario_atencion='9-18')
+    cliente = Cliente(rut='1-9', nombre='Ana', correo='ana@example.com',
+        telefono='1', direccion='A')
+    vehiculo = Vehiculo(marca='Toyota', modelo='Yaris', anio=2022,
+        precio=100, kilometraje=0, transmision='manual', condicion='usado',
+        estado='disponible', sucursal=sucursal)
+    reserva = Reserva(cliente=cliente, vehiculo=vehiculo,
+        fecha_reserva=date.today(), fecha_vencimiento=date.today() + timedelta(days=1),
+        monto_reserva=10, estado='cancelada')
+    session.add(reserva)
+"""
+            subprocess.run([sys.executable, "-c", sembrar], cwd=RAIZ,
+                           env=entorno, check=True, capture_output=True, text=True)
+            actualizacion = subprocess.run(
+                [sys.executable, "-m", "alembic", "upgrade", "head"],
+                cwd=RAIZ, env=entorno, capture_output=True, text=True,
+            )
+            self.assertEqual(actualizacion.returncode, 0, actualizacion.stderr)
+            verificar = """
+from datetime import date, timedelta
+from sqlalchemy import text
+from app.db import SessionLocal, engine
+from app.models import Cliente, Reserva, Sucursal, Vehiculo
+with SessionLocal.begin() as session:
+    sucursal = session.query(Sucursal).one()
+    cliente = session.query(Cliente).one()
+    vehiculo = session.query(Vehiculo).one()
+    reserva = session.query(Reserva).one()
+    assert (vehiculo.sucursal_id, reserva.cliente_id, reserva.vehiculo_id) == (
+        sucursal.id, cliente.id, vehiculo.id)
+    ids = [sucursal.id, cliente.id, vehiculo.id, reserva.id]
+    session.delete(reserva)
+    session.delete(vehiculo)
+    session.delete(cliente)
+    session.delete(sucursal)
+with SessionLocal.begin() as session:
+    nueva_sucursal = Sucursal(nombre='Sur', direccion='B', ciudad='Valdivia',
+        telefono='2', horario_atencion='9-18')
+    nuevo_cliente = Cliente(rut='2-7', nombre='Beto', correo='b@example.com',
+        telefono='2', direccion='B')
+    nuevo_vehiculo = Vehiculo(marca='Kia', modelo='Rio', anio=2023,
+        precio=200, kilometraje=0, transmision='manual', condicion='usado',
+        estado='disponible', sucursal=nueva_sucursal)
+    nueva_reserva = Reserva(cliente=nuevo_cliente, vehiculo=nuevo_vehiculo,
+        fecha_reserva=date.today(), fecha_vencimiento=date.today() + timedelta(days=1),
+        monto_reserva=20, estado='cancelada')
+    session.add(nueva_reserva)
+    session.flush()
+    assert all(nuevo > anterior for nuevo, anterior in zip(
+        [nueva_sucursal.id, nuevo_cliente.id, nuevo_vehiculo.id, nueva_reserva.id],
+        ids,
+    ))
+with engine.connect() as conexion:
+    assert conexion.scalar(text('PRAGMA foreign_keys')) == 1
+    assert conexion.exec_driver_sql('PRAGMA foreign_key_check').fetchall() == []
+"""
+            subprocess.run([sys.executable, "-c", verificar], cwd=RAIZ,
+                           env=entorno, check=True, capture_output=True, text=True)
+            subprocess.run(
+                [sys.executable, "-m", "alembic", "downgrade", "20261028_orm"],
+                cwd=RAIZ, env=entorno, check=True, capture_output=True, text=True,
+            )
+            subprocess.run(
+                [sys.executable, "-m", "alembic", "upgrade", "head"],
+                cwd=RAIZ, env=entorno, check=True, capture_output=True, text=True,
+            )
+            subprocess.run([sys.executable, "-c", verificar], cwd=RAIZ,
+                           env=entorno, check=True, capture_output=True, text=True)
+
     def test_migracion_integridad_y_http(self):
         with entorno_base_temporal() as (entorno, ruta):
             subprocess.run(

@@ -1,6 +1,12 @@
-# Reiniciar la API con CONCESIONARIA_DATOS_DEMO=1 antes de ejecutar EN ORDEN.
-# Los 12 vehiculos iniciales hacen que las creaciones de este archivo sean 13 y 14.
-# Si haces otras creaciones, reinicia para repetir o usa los IDs devueltos.
+# Ejecutar EN ORDEN sobre una SQLite de prueba nueva. No usar concesionaria.db.
+# En PowerShell, desde la raiz del proyecto:
+# $pruebaDb = Join-Path $env:TEMP ("concesionaria-piero-" + [guid]::NewGuid() + ".db")
+# $env:CONCESIONARIA_DATABASE_URL = "sqlite:///$($pruebaDb.Replace('\', '/'))"
+# .\.venv\Scripts\python.exe -m alembic upgrade head
+# $env:CONCESIONARIA_DATOS_DEMO = "1"
+# .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+# El seeder crea 3 vehiculos, 2 sucursales y 2 reservas. Las nuevas IDs son 4 y 5.
+# Para reiniciar sin recargar el seeder: Remove-Item Env:CONCESIONARIA_DATOS_DEMO
 # Cada solicitud incluye el codigo HTTP y el resultado esperado.
 @baseUrl = http://127.0.0.1:8000
 
@@ -8,19 +14,19 @@
 # Esperado: 200
 GET {{baseUrl}}/health
 
-### Primera pagina: 10 items, total 12, total_paginas 2
+### Inventario inicial: 3 items, total 3, total_paginas 1
 # Esperado: 200
 GET {{baseUrl}}/vehiculos
 
-### Filtros + orden + pagina 1: id 9, total 2, total_paginas 2
+### Filtro exacto: Toyota disponible, id 1, total 1
 # Esperado: 200
 GET {{baseUrl}}/vehiculos?marca=toyota&estado=disponible&sucursal_id=1&precio_min=10000000&precio_max=26000000&ordenar_por=precio&direccion=desc&pagina=1&limite=1
 
-### Misma consulta, pagina 2: id 1 y mismos totales
+### Orden descendente y pagina 2: id 3, total 3, total_paginas 3
 # Esperado: 200
-GET {{baseUrl}}/vehiculos?marca=toyota&estado=disponible&sucursal_id=1&precio_min=10000000&precio_max=26000000&ordenar_por=precio&direccion=desc&pagina=2&limite=1
+GET {{baseUrl}}/vehiculos?ordenar_por=precio&direccion=desc&pagina=2&limite=1
 
-### Segunda pagina por defecto: IDs 11 y 12, total 12
+### Segunda pagina por defecto: items [], total 3, total_paginas 1
 # Esperado: 200
 GET {{baseUrl}}/vehiculos?pagina=2
 
@@ -28,7 +34,7 @@ GET {{baseUrl}}/vehiculos?pagina=2
 # Esperado: 200
 GET {{baseUrl}}/vehiculos?marca=MarcaInexistente
 
-### Pagina fuera del rango: items [], total 12, total_paginas 2
+### Pagina fuera del rango: items [], total 3, total_paginas 1
 # Esperado: 200
 GET {{baseUrl}}/vehiculos?pagina=99
 
@@ -44,7 +50,7 @@ GET {{baseUrl}}/vehiculos?limite=101
 # Esperado: 422
 GET {{baseUrl}}/vehiculos?ordenar_por=marca
 
-### Crear en sucursal existente: id 13, estado disponible
+### Crear en sucursal existente: id 4, estado disponible
 # Esperado: 201
 POST {{baseUrl}}/vehiculos
 Content-Type: application/json
@@ -53,50 +59,50 @@ Content-Type: application/json
 
 ### Consultar el creado
 # Esperado: 200
-GET {{baseUrl}}/vehiculos/13
+GET {{baseUrl}}/vehiculos/4
 
 ### PATCH parcial: precio 9000000 y sucursal 2; otros campos iguales
 # Esperado: 200
-PATCH {{baseUrl}}/vehiculos/13
+PATCH {{baseUrl}}/vehiculos/4
 Content-Type: application/json
 
 {"precio":9000000,"sucursal_id":2}
 
 ### Null no borra un campo obligatorio
 # Esperado: 422
-PATCH {{baseUrl}}/vehiculos/13
+PATCH {{baseUrl}}/vehiculos/4
 Content-Type: application/json
 
 {"precio":null}
 
 ### No se puede cambiar el ID
 # Esperado: 422
-PATCH {{baseUrl}}/vehiculos/13
+PATCH {{baseUrl}}/vehiculos/4
 Content-Type: application/json
 
 {"id":50}
 
 ### Cuerpo vacio
 # Esperado: 422
-PATCH {{baseUrl}}/vehiculos/13
+PATCH {{baseUrl}}/vehiculos/4
 Content-Type: application/json
 
 {}
 
 ### Sucursal inexistente: no aplica tampoco el nuevo precio
 # Esperado: 404
-PATCH {{baseUrl}}/vehiculos/13
+PATCH {{baseUrl}}/vehiculos/4
 Content-Type: application/json
 
 {"sucursal_id":999999,"precio":1}
 
 ### Confirmar que conserva precio 9000000 y sucursal 2
 # Esperado: 200
-GET {{baseUrl}}/vehiculos/13
+GET {{baseUrl}}/vehiculos/4
 
 ### Reservar manualmente esta prohibido
 # Esperado: 400
-PATCH {{baseUrl}}/vehiculos/13
+PATCH {{baseUrl}}/vehiculos/4
 Content-Type: application/json
 
 {"estado":"reservado"}
@@ -125,27 +131,27 @@ DELETE {{baseUrl}}/vehiculos/3
 
 ### Vender el creado, disponible y sin reserva activa
 # Esperado: 200
-PATCH {{baseUrl}}/vehiculos/13
+PATCH {{baseUrl}}/vehiculos/4
 Content-Type: application/json
 
 {"estado":"vendido"}
 
 ### Vendido es final
 # Esperado: 400
-PATCH {{baseUrl}}/vehiculos/13
+PATCH {{baseUrl}}/vehiculos/4
 Content-Type: application/json
 
 {"estado":"disponible"}
 
 ### Eliminar el creado, sin historial: SIN CUERPO
 # Esperado: 204
-DELETE {{baseUrl}}/vehiculos/13
+DELETE {{baseUrl}}/vehiculos/4
 
 ### Ya no existe
 # Esperado: 404
-GET {{baseUrl}}/vehiculos/13
+GET {{baseUrl}}/vehiculos/4
 
-### Nueva creacion: ID 14, no reutiliza el 13
+### Nueva creacion: ID 5, no reutiliza el 4
 # Esperado: 201
 POST {{baseUrl}}/vehiculos
 Content-Type: application/json
@@ -154,7 +160,7 @@ Content-Type: application/json
 
 ### Limpieza del nuevo vehiculo, sin historial
 # Esperado: 204
-DELETE {{baseUrl}}/vehiculos/14
+DELETE {{baseUrl}}/vehiculos/5
 
 ### Crear con sucursal inexistente
 # Esperado: 404
