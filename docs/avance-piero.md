@@ -42,3 +42,36 @@ temporal antes de importar `app.db`.
 - Roberto: sus pruebas de integracion ORM usan `limpiar_base()` y IDs fijos;
   deben activar una SQLite temporal antes de importar `app.db` y crear
   referencias ORM propias. No se ejecutan contra la base por defecto.
+
+## Etapa 2: vehiculos y responsabilidades
+
+`app/repositories/vehiculos.py` concentra `select`, filtros, ordenacion,
+paginacion y `flush`. Por ejemplo, `GET /vehiculos?marca=Prueba&limite=1`
+solicita al repositorio registros de esa marca y el total anterior a la
+paginacion; el servicio solo construye la respuesta. Los cinco endpoints
+conservan sus rutas y DTO. El mapper `_registro` de
+`app/services/vehiculos.py` convierte cada modelo ORM en el diccionario de
+salida; `app/domain/vehiculo.py` define los valores permitidos de estado,
+condicion y transmision. Se retiro la clase de dominio antigua que duplicaba
+el modelo ORM sin participar en ninguna operacion.
+
+Vehiculos llama a `procesar_vencimientos()` del servicio de Roberto antes de
+listar, consultar, actualizar y eliminar. Esa funcion publica abre su propia
+transaccion antes de que vehiculos abra la suya; asi no hay una sesion anidada
+ni una importacion circular. Queda pendiente acordar una variante que reciba
+la sesion activa para una transaccion unica entre ambos modulos.
+
+Prueba aislada de esta etapa:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest tests.test_base_piero tests.test_vehiculos_orm -v
+```
+
+`tests/test_vehiculos_orm.py` migra su SQLite temporal, crea referencias ORM
+validas y pasa la misma URL al servidor HTTP. Incluye los cinco endpoints,
+filtro, orden, paginacion, vencimiento, sucursal inexistente, historial,
+venta y ausencia de cambios parciales. `tests/test_vehiculos.py` conserva aun
+sus fixtures de memoria; su migracion completa corresponde a la etapa 3.
+Resultado del 1 de noviembre de 2026: **2 pruebas aprobadas** (`OK`, 12.397 s)
+con el comando anterior. La suite completa no se ejecuto por los fixtures
+antiguos de memoria y por la falta de aislamiento previo en pruebas ajenas.
