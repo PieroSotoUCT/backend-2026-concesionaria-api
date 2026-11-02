@@ -1,0 +1,130 @@
+# Usar una base desechable vacia con CONCESIONARIA_DATOS_DEMO=1.
+# El ejemplo demo actual contiene cliente 1, vehiculo disponible 1 y dos reservas.
+# La fecha local de hoy es valida. Copiar el ID devuelto por POST a @reservaId.
+@baseUrl = http://127.0.0.1:8000
+@clienteId = 1
+@vehiculoId = 1
+@reservaId = 3
+@fechaVencimiento = {{$localDatetime "YYYY-MM-DD"}}
+
+### Estado del servidor
+# Esperado: 200
+GET {{baseUrl}}/health
+
+### Listar reservas existentes
+# Esperado: 200
+GET {{baseUrl}}/reservas
+
+### Crear reserva con fecha de hoy
+# Esperado: 201; el servidor asigna id, fecha_reserva y estado activa
+POST {{baseUrl}}/reservas
+Content-Type: application/json
+
+{
+  "cliente_id": {{clienteId}},
+  "vehiculo_id": {{vehiculoId}},
+  "fecha_vencimiento": "{{fechaVencimiento}}",
+  "monto_reserva": 500000
+}
+
+### Consultar la reserva creada; actualiza @reservaId si el ID devuelto cambia
+# Esperado: 200 y estado activa
+GET {{baseUrl}}/reservas/{{reservaId}}
+
+### Doble reserva del mismo vehiculo
+# Esperado: 409 VEHICLE_NOT_AVAILABLE
+POST {{baseUrl}}/reservas
+Content-Type: application/json
+
+{
+  "cliente_id": {{clienteId}},
+  "vehiculo_id": {{vehiculoId}},
+  "fecha_vencimiento": "{{fechaVencimiento}}",
+  "monto_reserva": 500000
+}
+
+### Fecha anterior a hoy
+# Esperado: 400 INVALID_EXPIRATION_DATE
+POST {{baseUrl}}/reservas
+Content-Type: application/json
+
+{
+  "cliente_id": {{clienteId}},
+  "vehiculo_id": 2,
+  "fecha_vencimiento": "2000-01-01",
+  "monto_reserva": 500000
+}
+
+### Cliente inexistente
+# Esperado: 404 RESOURCE_NOT_FOUND
+POST {{baseUrl}}/reservas
+Content-Type: application/json
+
+{
+  "cliente_id": 999999,
+  "vehiculo_id": 2,
+  "fecha_vencimiento": "{{fechaVencimiento}}",
+  "monto_reserva": 500000
+}
+
+### Vehiculo inexistente
+# Esperado: 404 RESOURCE_NOT_FOUND
+POST {{baseUrl}}/reservas
+Content-Type: application/json
+
+{
+  "cliente_id": {{clienteId}},
+  "vehiculo_id": 999999,
+  "fecha_vencimiento": "{{fechaVencimiento}}",
+  "monto_reserva": 500000
+}
+
+### Monto invalido y campo extra
+# Esperado: 422 VALIDATION_ERROR
+POST {{baseUrl}}/reservas
+Content-Type: application/json
+
+{
+  "cliente_id": {{clienteId}},
+  "vehiculo_id": 2,
+  "fecha_vencimiento": "{{fechaVencimiento}}",
+  "monto_reserva": 0,
+  "estado": "activa"
+}
+
+### Cancelar la reserva activa
+# Esperado: 200 y estado cancelada
+PATCH {{baseUrl}}/reservas/{{reservaId}}
+Content-Type: application/json
+
+{"estado":"cancelada"}
+
+### Una reserva cancelada no se puede cancelar de nuevo
+# Esperado: 409 STATE_CONFLICT
+PATCH {{baseUrl}}/reservas/{{reservaId}}
+Content-Type: application/json
+
+{"estado":"cancelada"}
+
+### El vehiculo liberado puede reservarse otra vez
+# Esperado: 201
+POST {{baseUrl}}/reservas
+Content-Type: application/json
+
+{
+  "cliente_id": {{clienteId}},
+  "vehiculo_id": {{vehiculoId}},
+  "fecha_vencimiento": "{{fechaVencimiento}}",
+  "monto_reserva": 500000
+}
+
+### Reserva inexistente
+# Esperado: 404 RESOURCE_NOT_FOUND
+GET {{baseUrl}}/reservas/999999
+
+### PATCH con estado o campos no permitidos
+# Esperado: 422 VALIDATION_ERROR
+PATCH {{baseUrl}}/reservas/{{reservaId}}
+Content-Type: application/json
+
+{"estado":null}

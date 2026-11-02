@@ -1,6 +1,6 @@
 """Datos de entrada y salida del modulo de reservas (Pydantic v2)."""
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -17,7 +17,7 @@ class ReservaCrear(BaseModel):
             "example": {
                 "cliente_id": 1,
                 "vehiculo_id": 3,
-                "fecha_vencimiento": "2026-10-12",
+                "fecha_vencimiento": (date.today() + timedelta(days=7)).isoformat(),
                 "monto_reserva": 500000,
             }
         },
