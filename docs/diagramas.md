@@ -1,6 +1,8 @@
 # Diagramas del sistema
 
-## Diagrama de clases del dominio
+## 1. Diagrama de clases del dominio
+
+El siguiente diagrama representa las entidades principales del sistema de concesionaria, sus atributos y las relaciones entre ellas.
 
 ```mermaid
 classDiagram
@@ -32,6 +34,7 @@ classDiagram
         +str transmision
         +str condicion
         +str estado
+        +int sucursal_id
     }
 
     class Reserva {
@@ -40,6 +43,8 @@ classDiagram
         +date fecha_vencimiento
         +int monto_reserva
         +str estado
+        +int cliente_id
+        +int vehiculo_id
     }
 
     Sucursal "1" --> "0..*" Vehiculo : tiene
@@ -47,7 +52,9 @@ classDiagram
     Vehiculo "1" --> "0..*" Reserva : recibe
 ```
 
-## Diagrama de datos
+## 2. Diagrama de datos
+
+El siguiente diagrama representa la estructura de las tablas persistidas mediante SQLAlchemy ORM, incluyendo sus claves primarias, claves foráneas y restricciones de unicidad.
 
 ```mermaid
 erDiagram
@@ -97,6 +104,53 @@ erDiagram
     }
 ```
 
-## Dominio y persistencia
+## 3. Relaciones entre entidades
 
-El diagrama de clases representa las entidades del dominio y sus relaciones. El diagrama de datos representa las tablas persistidas, sus claves primarias (PK), claves foráneas (FK) y la restricción de unicidad del RUT.
+### Sucursal y vehículo
+
+Una sucursal puede tener asociados varios vehículos.
+
+Cada vehículo pertenece a una sucursal mediante el atributo `sucursal_id`, que actúa como clave foránea.
+
+Cardinalidad:
+
+- Una sucursal puede tener cero o muchos vehículos.
+- Cada vehículo pertenece a una sucursal.
+
+### Cliente y reserva
+
+Un cliente puede realizar distintas reservas a lo largo del tiempo.
+
+Cada reserva referencia a un cliente mediante `cliente_id`.
+
+Cardinalidad:
+
+- Un cliente puede tener cero o muchas reservas.
+- Cada reserva pertenece a un cliente.
+
+### Vehículo y reserva
+
+Un vehículo puede aparecer en diferentes registros de reserva a lo largo del historial del sistema.
+
+Cada reserva referencia a un vehículo mediante `vehiculo_id`.
+
+Cardinalidad:
+
+- Un vehículo puede tener cero o muchas reservas históricas.
+- Cada reserva referencia a un vehículo.
+
+Las reglas del servicio de reservas controlan la disponibilidad y evitan reservas activas incompatibles para un mismo vehículo.
+
+## 4. Dominio y persistencia
+
+El diagrama de clases representa las entidades principales del dominio y sus relaciones conceptuales.
+
+El diagrama de datos representa las tablas persistidas en la base de datos y permite identificar:
+
+- **PK (Primary Key):** identificador principal de cada registro.
+- **FK (Foreign Key):** referencia a otra tabla mediante una clave foránea.
+- **UK (Unique Key):** restricción de unicidad aplicada al RUT del cliente.
+
+Los modelos ORM implementan las relaciones entre sucursales, vehículos, clientes y reservas mediante SQLAlchemy.
+
+La persistencia permite mantener la integridad referencial de los registros y representar las asociaciones entre las entidades del sistema.

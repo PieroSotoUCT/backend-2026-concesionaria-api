@@ -1,5 +1,7 @@
 """Operaciones transaccionales y reglas de negocio de clientes."""
 
+from sqlalchemy.exc import IntegrityError
+
 from app.db import SessionLocal, initialize_database
 from app.errores import ErrorAplicacion
 from app.models import Cliente
@@ -29,6 +31,12 @@ def _normalizar_rut(rut: str) -> str:
     return rut.replace(".", "").replace(" ", "").upper()
 
 
+def _es_rut_duplicado(error: IntegrityError) -> bool:
+    """Identifica una violación de unicidad de la columna RUT."""
+    mensaje = str(error.orig).lower()
+    return "unique constraint failed" in mensaje and "clientes.rut" in mensaje
+
+
 def crear_cliente(entrada: ClienteCrear) -> dict[str, object]:
     """Valida las reglas de negocio y registra un cliente."""
     rut = _normalizar_rut(entrada.rut)
@@ -40,28 +48,39 @@ def crear_cliente(entrada: ClienteCrear) -> dict[str, object]:
             "El RUT del cliente no puede estar vacío.",
         )
 
-    with SessionLocal.begin() as session:
-        cliente_existente = repositorio_clientes.buscar_por_rut(session, rut)
+    try:
+        with SessionLocal.begin() as session:
+            cliente_existente = repositorio_clientes.buscar_por_rut(session, rut)
 
-        if cliente_existente is not None:
-            raise ErrorAplicacion(
-                409,
-                "DUPLICATE_RESOURCE",
-                f"Ya existe un cliente registrado con el RUT {rut}.",
+            if cliente_existente is not None:
+                raise ErrorAplicacion(
+                    409,
+                    "DUPLICATE_RESOURCE",
+                    f"Ya existe un cliente registrado con el RUT {rut}.",
+                )
+
+            cliente = Cliente(
+                rut=rut,
+                nombre=entrada.nombre,
+                correo=str(entrada.correo),
+                telefono=entrada.telefono,
+                direccion=entrada.direccion,
             )
 
-        cliente = Cliente(
-            rut=rut,
-            nombre=entrada.nombre,
-            correo=str(entrada.correo),
-            telefono=entrada.telefono,
-            direccion=entrada.direccion,
-        )
+            repositorio_clientes.guardar(session, cliente)
+            session.flush()
 
-        repositorio_clientes.guardar(session, cliente)
-        session.flush()
+            return _registro(cliente)
 
-        return _registro(cliente)
+    except IntegrityError as error:
+        if not _es_rut_duplicado(error):
+            raise
+
+        raise ErrorAplicacion(
+            409,
+            "DUPLICATE_RESOURCE",
+            f"Ya existe un cliente registrado con el RUT {rut}.",
+        ) from error
 
 
 def listar_clientes() -> list[dict[str, object]]:

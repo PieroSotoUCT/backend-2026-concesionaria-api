@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, delete
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -13,10 +14,10 @@ from sqlalchemy.pool import StaticPool
 # SQLite en memoria evita utilizar concesionaria.db.
 os.environ["CONCESIONARIA_DATABASE_URL"] = "sqlite://"
 
-
 from app.db import Base
 from app.db import engine as motor_aplicacion
 from app.models import Cliente
+from app.services.clientes import _es_rut_duplicado
 
 motor_pruebas = create_engine(
     "sqlite://",
@@ -166,6 +167,65 @@ class PruebasClientes(unittest.TestCase):
             409,
             "DUPLICATE_RESOURCE",
         )
+
+    def test_integrity_error_por_rut_duplicado_da_409_y_hace_rollback(
+        self,
+    ) -> None:
+        """Comprueba el conflicto real de unicidad y el rollback."""
+        with SesionPruebas.begin() as session:
+            cliente_existente = Cliente(
+                rut="12345678-K",
+                nombre="Cliente Existente",
+                correo="existente@example.com",
+                telefono="912345678",
+                direccion="Temuco",
+            )
+            session.add(cliente_existente)
+
+        # Simula que la consulta previa no detectó el duplicado.
+        # La restricción UNIQUE de SQLite debe rechazar la inserción.
+        with patch(
+            "app.services.clientes.repositorio_clientes.buscar_por_rut",
+            return_value=None,
+        ):
+            respuesta = self.client.post(
+                "/clientes",
+                json=self.datos_cliente(rut="12345678-K"),
+            )
+
+        self.assert_error(
+            respuesta,
+            409,
+            "DUPLICATE_RESOURCE",
+        )
+
+        # El registro original debe permanecer y no debe existir
+        # una segunda inserción después del rollback.
+        with SesionPruebas() as session:
+            clientes = session.query(Cliente).all()
+
+            self.assertEqual(len(clientes), 1)
+            self.assertEqual(clientes[0].nombre, "Cliente Existente")
+            self.assertEqual(clientes[0].rut, "12345678-K")
+
+    def test_integrity_error_identifica_solo_duplicado_de_rut(
+        self,
+    ) -> None:
+        """Distingue duplicados de RUT de otros errores de integridad."""
+        error_rut = IntegrityError(
+            "INSERT",
+            {},
+            Exception("UNIQUE constraint failed: clientes.rut"),
+        )
+
+        error_nombre = IntegrityError(
+            "INSERT",
+            {},
+            Exception("NOT NULL constraint failed: clientes.nombre"),
+        )
+
+        self.assertTrue(_es_rut_duplicado(error_rut))
+        self.assertFalse(_es_rut_duplicado(error_nombre))
 
     def test_correo_invalido_da_422(self) -> None:
         respuesta = self.client.post(

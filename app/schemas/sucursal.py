@@ -4,7 +4,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class SucursalCrear(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    """Datos necesarios para registrar una sucursal."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        str_strip_whitespace=True,
+    )
 
     nombre: str = Field(min_length=2, max_length=100)
     direccion: str = Field(min_length=1, max_length=200)
@@ -14,4 +19,6 @@ class SucursalCrear(BaseModel):
 
 
 class SucursalRespuesta(SucursalCrear):
-    id: int
+    """Datos de una sucursal devueltos por la API."""
+
+    id: int = Field(gt=0, strict=True)
