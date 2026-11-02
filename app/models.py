@@ -10,6 +10,7 @@ from app.db import Base
 
 class Sucursal(Base):
     __tablename__ = "sucursales"
+    __table_args__ = {"sqlite_autoincrement": True}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     nombre: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -22,6 +23,7 @@ class Sucursal(Base):
 
 class Cliente(Base):
     __tablename__ = "clientes"
+    __table_args__ = {"sqlite_autoincrement": True}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     rut: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
@@ -34,6 +36,7 @@ class Cliente(Base):
 
 class Vehiculo(Base):
     __tablename__ = "vehiculos"
+    __table_args__ = {"sqlite_autoincrement": True}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     marca: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -51,6 +54,7 @@ class Vehiculo(Base):
 
 class Reserva(Base):
     __tablename__ = "reservas"
+    __table_args__ = {"sqlite_autoincrement": True}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     cliente_id: Mapped[int] = mapped_column(ForeignKey("clientes.id"), nullable=False)

@@ -1,58 +1,42 @@
 # Progreso del equipo
 
-## Piero Soto: base compartida y vehiculos
+## Estado de la integración
 
-- Etapas 1 a 5 completadas: base, modelo, datos de demostracion, CRUD,
-  consultas, pruebas, documentacion y PR de su modulo.
-- Rama `feat/vehiculos`; PR #1 abierto hacia `main`:
-  https://github.com/PieroSotoUCT/backend-2026-concesionaria-api/pull/1
-  La fusion necesita revision y autorizacion.
-- Cinco commits de desarrollo verificados: `579303e` (modelo y DTO),
-  `2ca4a92` (datos demo), `0d8fa40` (CRUD), `26815be` (consultas) y
-  `6ba2ea0` (pruebas manuales y documentacion).
-- Decisiones: filtrar, ordenar y paginar en ese orden; calcular el total antes
-  de paginar; resolver empates por ID ascendente; comprobar estados e historial
-  antes de guardar cambios.
-- Pruebas propias: 15 casos automatizados y 33 solicitudes de
-  `tests_manual/vehiculos.http` aprobados. Dependencias instaladas y API
-  ejecutada desde el entorno virtual nuevo.
-- `main` ya incluye el PR #2 de Roberto. El merge `ec0d0a0` incorpora
-  reservas a `feat/vehiculos` y resuelve los conflictos con el PR #1.
-- Siguiente paso: conectar los vencimientos de reservas con las operaciones
-  de vehiculos, revisar el PR #1 y fusionarlo con autorizacion.
+Las cuatro entidades (sucursales, clientes, vehículos y reservas) persisten
+mediante SQLAlchemy en SQLite. Alembic crea el esquema y conserva las
+relaciones. La API publica 15 operaciones de negocio y `GET /health`.
 
-## Gabriel Rivas: clientes y sucursales
+La suite conjunta ejecuta 53 pruebas en bases temporales y pasó sin fallos.
+En una base nueva, Alembic y el seeder generaron 2 clientes, 2 sucursales,
+11 vehículos y 2 reservas. Se verificaron OpenAPI, 16 solicitudes HTTP de
+los cuatro módulos y un reinicio real de Uvicorn sin recargar el seeder;
+el dato actualizado siguió disponible. Los casos reproducibles están en
+[docs/evidencias-pruebas.md](docs/evidencias-pruebas.md).
 
-- Responsable de las entidades, DTO, repositorios, servicios, rutas, pruebas y
-  documentacion de clientes y sucursales.
-- Todavia no se observa un PR de estos modulos en el repositorio compartido.
-  Su codigo y pruebas no se han revisado ni integrado aqui.
+## Aportes por integrante
 
-## Roberto Gonzalez: reservas
+- **Piero Soto:** conexión y migraciones, contrato y errores compartidos,
+  repositorio y cinco rutas de vehículos, pruebas aisladas e integración
+  final. Vehículos procesa vencimientos en la misma sesión y transacción.
+  Los detalles de cada etapa están en [docs/avance-piero.md](docs/avance-piero.md).
+- **Gabriel Rivas:** clientes, sucursales, seeder de cuatro entidades,
+  diagramas y pruebas ORM de sus módulos. Su avance está en
+  [docs/avance-gabriel.md](docs/avance-gabriel.md) y los diagramas en
+  [docs/diagramas.md](docs/diagramas.md).
+- **Roberto González:** reservas, vencimientos, pruebas de integración ORM
+  y evidencia. Su avance está en [docs/avance-roberto.md](docs/avance-roberto.md).
+  Sus commits antiguos con autor `Dev Reservas` están atribuidos en ese archivo.
 
-- PR #2 fusionado en `main`:
-  https://github.com/PieroSotoUCT/backend-2026-concesionaria-api/pull/2
-  Incluye entidad, DTO, repositorio, servicio, cuatro rutas, pruebas y
-  documentacion del modulo de reservas.
-- Despues del merge local, las 30 pruebas automatizadas de vehiculos y
-  reservas pasaron juntas. Tambien se comprobo por HTTP reservar, cancelar y
-  recuperar la disponibilidad de un vehiculo; el esquema Swagger muestra
-  ambos modulos.
-- Evidencia Git por aclarar: los seis commits del PR #2 muestran como autor
-  `Dev Reservas <dev.reservas@example.invalid>`, aunque Roberto abrio el PR y
-  aparece como committer. Revisar con el la atribucion de sus commits sin
-  modificar su historial por cuenta ajena.
+El historial Git conserva al menos cinco commits significativos por
+integrante, ramas individuales y los PR de trabajo. No se alteraron autores,
+fechas ni commits anteriores.
 
-## Integracion y pendientes del grupo
+## Defensa y datos académicos
 
-- Conectar `procesar_vencimientos()` antes de consultas y operaciones de
-  vehiculos que dependan de la disponibilidad. Las pruebas completas entre
-  modulos siguen pendientes.
-- Integrar clientes y sucursales cuando Gabriel entregue su PR; verificar
-  referencias, RUT unico y funcionamiento conjunto de los 15 endpoints.
-- Repositorio anterior privado; nuevo repositorio publico
-  `PieroSotoUCT/backend-2026-concesionaria-api`. Los ocho commits previos se
-  reprodujeron sin prompt ni rubrica, conservando mensajes, autores y fechas;
-  los hashes cambiaron al excluir esos archivos del historial.
-- Confirmar con el docente el numero de grupo, la autorizacion de un equipo de
-  tres, el nombre del repositorio, las fechas y la formula de nota de la guia.
+Cada integrante debe poder explicar el flujo router → esquema → servicio →
+repositorio → ORM/SQLite, además de las reglas de disponibilidad, migración,
+pruebas y persistencia tras reiniciar. La guía indica 10 minutos de exposición,
+5 de preguntas y un máximo de 15 diapositivas; se sortea quién expone.
+
+Queda por confirmar con el docente la fecha exacta, el número y nombre del
+grupo y la autorización de un equipo de tres personas.

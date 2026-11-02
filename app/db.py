@@ -3,7 +3,7 @@
 import os
 from collections.abc import Iterator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 
@@ -16,6 +16,16 @@ engine = create_engine(
     DATABASE_URL,
     connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {},
 )
+
+
+if engine.dialect.name == "sqlite":
+    @event.listens_for(engine, "connect")
+    def _activar_claves_foraneas(dbapi_connection, _connection_record) -> None:
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
@@ -30,6 +40,4 @@ def get_session() -> Iterator[Session]:
 
 
 def initialize_database() -> None:
-    from app.models import Cliente, Reserva, Sucursal, Vehiculo  # noqa: F401
-
-    Base.metadata.create_all(bind=engine)
+    """Compatibilidad temporal: el esquema se prepara con Alembic, no al importar."""

@@ -1,8 +1,8 @@
 # Contrato compartido de la API
 
 Este documento coordina el trabajo de los tres integrantes. La entrega final
-del grupo tendra 15 endpoints de negocio; en esta sesion se implementan solo
-vehiculos y la base comun. Los otros modulos siguen a cargo de sus responsables.
+del grupo tiene 15 endpoints de negocio. Cada modulo sigue a cargo de su
+responsable y Piero coordina la base comun.
 
 ## Reparto
 
@@ -21,7 +21,8 @@ Las cuatro entidades se persisten mediante modelos SQLAlchemy en una base
 configurable con `CONCESIONARIA_DATABASE_URL` (por defecto, SQLite local).
 Las relaciones se declaran con claves foraneas y los IDs son asignados por la
 base de datos; no se mantienen colecciones de negocio en memoria.
-Los IDs eliminados no se reutilizan. Las fechas se guardan como `date` de
+Los IDs eliminados no se reutilizan despues de la revision
+`20261101_ids_sin_reuso` de SQLite. Las fechas se guardan como `date` de
 Python, los montos como enteros en pesos chilenos y los estados como texto.
 Se usa la fecha local de la maquina que ejecuta la API (`date.today()`) en
 todas las operaciones que dependen de hoy. La demostracion debe ejecutarse
@@ -41,12 +42,39 @@ reservas historicas. Las funciones de cada repositorio usan la misma sesion
 ORM: no hay copias por modulo. Las migraciones versionadas viven en
 `alembic/`.
 
-Los ejemplos opcionales de `app/datos_demo.py` usan esas mismas colecciones.
+Los ejemplos opcionales de `app/datos_demo.py` usan el mismo ORM.
 Con `CONCESIONARIA_DATOS_DEMO=1` al iniciar la API se cargan dos sucursales,
-un cliente ficticio, doce vehiculos y dos reservas: una cancelada para el
+un cliente ficticio, tres vehiculos y dos reservas: una cancelada para el
 vehiculo 2 y una activa para el vehiculo 3. La carga exige memoria vacia y
-no crea endpoints. Detener y volver a iniciar el proceso restablece los
-ejemplos al mismo estado, con fechas calculadas desde el dia local.
+no crea endpoints. Los registros persisten al reiniciar; volver a cargar los
+ejemplos requiere una base vacia de prueba.
+
+## Sesiones, transacciones y migracion
+
+La URL unica de la API y Alembic es `CONCESIONARIA_DATABASE_URL`, leida en
+`app/db.py`; sin esa variable se usa `sqlite:///./concesionaria.db`. El archivo
+`.env.example` es una referencia, no se carga automaticamente. En PowerShell
+se establece `$env:CONCESIONARIA_DATABASE_URL` antes de migrar o iniciar.
+`alembic upgrade head` prepara el esquema. Importar modulos no crea tablas;
+`initialize_database()` permanece temporalmente como funcion publica de
+compatibilidad, sin efecto de creacion.
+
+Cada servicio abre y cierra la sesion ORM por operacion. Para escrituras usa
+`with SessionLocal.begin() as session`, que confirma al salir sin error y
+revierte si hay excepcion. Para lecturas usa `with SessionLocal() as session`.
+Los repositorios reciben esa misma `session` como primer argumento: por
+ejemplo, `repositorio.obtener(session, id)` y
+`repositorio.tiene_historial_reservas(session, id)`. No abren sesiones ni
+confirman transacciones. Asi, una reserva y el cambio de estado del vehiculo
+pueden confirmarse juntos. Una futura interfaz de vencimientos debe aceptar
+la sesion del servicio que la llama para mantener esa atomicidad.
+
+SQLite activa `PRAGMA foreign_keys=ON` en cada conexion de la API. Las pruebas
+se ejecutan sobre una SQLite temporal: `tests/soporte_bd.py` proporciona
+`entorno_base_temporal()`, que entrega un diccionario de entorno y la ruta de
+la base. Ese mismo entorno se pasa a Alembic, procesos de fixtures ORM y
+servidor HTTP; el contexto elimina la base al terminar. No se usa
+`limpiar_base()` sobre `concesionaria.db`.
 
 ## Rutas acordadas
 
@@ -116,10 +144,13 @@ letras a mayusculas; no incluye comprobacion del digito verificador.
 
 ## Conexion de modulos
 
-La API registra solo routers existentes. Vehiculos consulta sucursales y
-reservas directamente mediante funciones pequenas de su repositorio y las
-colecciones comunes. El modulo de reservas implementara la revision de
-vencimientos: una reserva vence cuando `fecha_vencimiento < date.today()`.
-Al integrarlo, se llamara antes de consultas y operaciones que afecten
-disponibilidad. Hasta entonces, las pruebas aisladas de vehiculos usan datos
-de demostracion coherentes y dejan esa conexion marcada como pendiente.
+La API registra los cuatro routers. Vehiculos consulta sucursales, reservas y
+vehiculos mediante `app/repositories/vehiculos.py`; el servicio aplica las
+reglas y convierte el modelo ORM a respuesta con `_registro`. Reservas
+procesa vencimientos cuando `fecha_vencimiento < date.today()`. Vehiculos
+llama la funcion publica antes de listar, consultar, actualizar y eliminar.
+Esa funcion abre una transaccion previa y separada; Roberto debe ofrecer una
+variante que reciba la sesion activa para unificarla con la operacion de
+vehiculos. Los servicios de clientes y sucursales aun ejecutan consultas ORM
+directamente: Gabriel debe trasladarlas a sus repositorios. Estas tareas no
+cambian las rutas ni los campos acordados.

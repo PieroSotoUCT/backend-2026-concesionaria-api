@@ -1,42 +1,87 @@
-"""Pruebas repetibles del CRUD y las reglas propias de vehiculos.
-
-Usan un servidor local con memoria independiente; no modifican una API abierta.
-"""
+"""Pruebas de vehiculos con fixtures ORM sobre SQLite temporal."""
 
 import json
-import os
 from pathlib import Path
 import socket
 import subprocess
 import sys
 import time
 import unittest
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from app.datos_demo import cargar_datos_demo
-from app.errores import ErrorAplicacion
-from app.repositories import datos
-from app.repositories import vehiculos as repositorio
-from app.schemas.vehiculo import ConsultaVehiculos, VehiculoActualizar
-from app.services import vehiculos as servicio
+from tests.soporte_bd import entorno_base_temporal
+
+
+RAIZ = Path(__file__).resolve().parents[1]
+
+SEMBRAR = """
+import json
+from datetime import date, timedelta
+from app.db import SessionLocal
+from app.models import Cliente, Reserva, Sucursal, Vehiculo
+with SessionLocal.begin() as session:
+    sucursales = [
+        Sucursal(nombre='Centro', direccion='A', ciudad='Temuco',
+                 telefono='1', horario_atencion='9-18'),
+        Sucursal(nombre='Sur', direccion='B', ciudad='Valdivia',
+                 telefono='2', horario_atencion='9-18'),
+    ]
+    cliente = Cliente(rut='11111111-1', nombre='Ana',
+                      correo='ana@example.com', telefono='3', direccion='C')
+    session.add_all([*sucursales, cliente])
+    session.flush()
+    vehiculos = []
+    for numero in range(12):
+        vehiculo = Vehiculo(marca='Inicial', modelo=f'M{numero + 1}',
+            anio=2022, precio=10000000 + numero * 100000,
+            kilometraje=numero * 1000, transmision='manual',
+            condicion='usado', estado='reservado' if numero == 2 else 'disponible',
+            sucursal=sucursales[numero % 2])
+        session.add(vehiculo)
+        vehiculos.append(vehiculo)
+    session.flush()
+    session.add_all([
+        Reserva(cliente=cliente, vehiculo=vehiculos[1],
+            fecha_reserva=date.today() - timedelta(days=10),
+            fecha_vencimiento=date.today() - timedelta(days=1),
+            monto_reserva=100, estado='cancelada'),
+        Reserva(cliente=cliente, vehiculo=vehiculos[2],
+            fecha_reserva=date.today(),
+            fecha_vencimiento=date.today() + timedelta(days=7),
+            monto_reserva=100, estado='activa'),
+    ])
+    print(json.dumps({'sucursales': [s.id for s in sucursales],
+                      'vehiculos': [v.id for v in vehiculos]}))
+"""
 
 
 class PruebasVehiculosHTTP(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        temporal = entorno_base_temporal()
+        entorno, _ruta = temporal.__enter__()
+        cls.addClassCleanup(temporal.__exit__, None, None, None)
+        subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"],
+                       cwd=RAIZ, env=entorno, check=True, capture_output=True, text=True)
+        sembrado = subprocess.run([sys.executable, "-c", SEMBRAR],
+                                 cwd=RAIZ, env=entorno, check=True,
+                                 capture_output=True, text=True)
+        ids = json.loads(sembrado.stdout)
+        cls.sucursal_1, cls.sucursal_2 = ids["sucursales"]
+        cls.iniciales = ids["vehiculos"]
         with socket.socket() as conexion:
             conexion.bind(("127.0.0.1", 0))
             puerto = conexion.getsockname()[1]
         cls.url = f"http://127.0.0.1:{puerto}"
-        entorno = dict(os.environ, CONCESIONARIA_DATOS_DEMO="1")
         cls.proceso = subprocess.Popen(
             [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1",
              "--port", str(puerto)],
-            cwd=Path(__file__).resolve().parents[1], env=entorno,
+            cwd=RAIZ, env=entorno,
             stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT,
-            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
         )
         cls.addClassCleanup(cls.detener_servidor)
         for _ in range(100):
@@ -55,7 +100,7 @@ class PruebasVehiculosHTTP(unittest.TestCase):
         cls.proceso.terminate()
         cls.proceso.wait(timeout=10)
 
-    def solicitar(self, metodo, ruta, cuerpo=None):
+    def solicitar(self, metodo: str, ruta: str, cuerpo: Any = None) -> tuple[int, Any]:
         contenido = json.dumps(cuerpo).encode() if cuerpo is not None else None
         solicitud = Request(self.url + ruta, data=contenido, method=metodo,
                             headers={"Content-Type": "application/json"})
@@ -64,14 +109,17 @@ class PruebasVehiculosHTTP(unittest.TestCase):
         except HTTPError as error:
             respuesta = error
         with respuesta:
+            estado = respuesta.status
+            if not isinstance(estado, int):
+                raise AssertionError(f"Estado HTTP invalido en {metodo} {ruta}")
             cuerpo = respuesta.read()
-            return respuesta.status, json.loads(cuerpo) if cuerpo else None
+            return estado, json.loads(cuerpo) if cuerpo else None
 
     def crear(self, **cambios):
         entrada = {
             "marca": "Toyota", "modelo": "Yaris", "anio": 2022, "precio": 10000000,
             "kilometraje": 10000, "transmision": "manual", "condicion": "usado",
-            "sucursal_id": 1,
+            "sucursal_id": self.sucursal_1,
         }
         entrada.update(cambios)
         return self.solicitar("POST", "/vehiculos", entrada)
@@ -89,9 +137,9 @@ class PruebasVehiculosHTTP(unittest.TestCase):
         self.assertEqual(creado["estado"], "disponible")
         ruta = f'/vehiculos/{creado["id"]}'
         self.assertEqual(self.solicitar("GET", ruta), (200, creado))
-        estado, actualizado = self.solicitar("PATCH", ruta, {"precio": 9000000, "sucursal_id": 2})
+        estado, actualizado = self.solicitar("PATCH", ruta, {"precio": 9000000, "sucursal_id": self.sucursal_2})
         self.assertEqual(estado, 200)
-        self.assertEqual(actualizado, {**creado, "precio": 9000000, "sucursal_id": 2})
+        self.assertEqual(actualizado, {**creado, "precio": 9000000, "sucursal_id": self.sucursal_2})
         self.assertEqual(self.solicitar("DELETE", ruta), (204, None))
         self.comprobar_error(self.solicitar("GET", ruta), 404)
         estado, siguiente = self.crear()
@@ -124,7 +172,7 @@ class PruebasVehiculosHTTP(unittest.TestCase):
         self.assertEqual(self.solicitar("GET", ruta), (200, creado))
 
     def test_eliminacion_con_historial(self):
-        for id in (2, 3):
+        for id in (self.iniciales[1], self.iniciales[2]):
             with self.subTest(id=id):
                 ruta = f"/vehiculos/{id}"
                 antes = self.solicitar("GET", ruta)
@@ -132,10 +180,11 @@ class PruebasVehiculosHTTP(unittest.TestCase):
                 self.assertEqual(self.solicitar("GET", ruta), antes)
 
     def test_reserva_impide_liberar_y_vender(self):
-        antes = self.solicitar("GET", "/vehiculos/3")
-        self.comprobar_error(self.solicitar("PATCH", "/vehiculos/3", {"estado": "disponible"}), 400)
-        self.comprobar_error(self.solicitar("PATCH", "/vehiculos/3", {"estado": "vendido", "precio": 1}), 409)
-        self.assertEqual(self.solicitar("GET", "/vehiculos/3"), antes)
+        ruta = f"/vehiculos/{self.iniciales[2]}"
+        antes = self.solicitar("GET", ruta)
+        self.comprobar_error(self.solicitar("PATCH", ruta, {"estado": "disponible"}), 400)
+        self.comprobar_error(self.solicitar("PATCH", ruta, {"estado": "vendido", "precio": 1}), 409)
+        self.assertEqual(self.solicitar("GET", ruta), antes)
 
     def test_venta_y_estado_final(self):
         _, creado = self.crear()
@@ -181,16 +230,18 @@ class PruebasVehiculosHTTP(unittest.TestCase):
     def test_filtros_orden_y_paginacion_combinados(self):
         ids = []
         for modelo, precio, anio, km, sucursal in (
-            ("A1", 100, 2020, 100, 1), ("B2", 300, 2022, 50, 2),
-            ("C3", 300, 2021, 150, 2), ("D4", 500, 2024, 0, 2),
-            ("E5", 900, 2023, 10, 1),
+            ("A1", 100, 2020, 100, self.sucursal_1),
+            ("B2", 300, 2022, 50, self.sucursal_2),
+            ("C3", 300, 2021, 150, self.sucursal_2),
+            ("D4", 500, 2024, 0, self.sucursal_2),
+            ("E5", 900, 2023, 10, self.sucursal_1),
         ):
             estado, creado = self.crear(marca="Consulta", modelo=modelo, precio=precio,
                                         anio=anio, kilometraje=km, sucursal_id=sucursal)
             self.assertEqual(estado, 201)
             ids.append(creado["id"])
         self.assertEqual(self.solicitar("PATCH", f"/vehiculos/{ids[4]}", {"estado": "vendido"})[0], 200)
-        parametros = {"marca": "  cOnSuLtA  ", "estado": "disponible", "sucursal_id": 2,
+        parametros = {"marca": "  cOnSuLtA  ", "estado": "disponible", "sucursal_id": self.sucursal_2,
                       "precio_min": 200, "precio_max": 500, "ordenar_por": "precio",
                       "direccion": "desc", "pagina": 2, "limite": 2}
         estado, pagina = self.solicitar("GET", "/vehiculos?" + urlencode(parametros))
@@ -251,33 +302,78 @@ class PruebasVehiculosHTTP(unittest.TestCase):
                 self.comprobar_error(self.solicitar("GET", "/vehiculos?" + query), 422)
 
 
-class PruebasReglasConDatosCompartidos(unittest.TestCase):
-    def setUp(self):
-        for coleccion in (datos.vehiculos, datos.sucursales, datos.clientes, datos.reservas):
-            coleccion.clear()
-        for nombre in datos.contadores:
-            datos.contadores[nombre] = 0
-        cargar_datos_demo()
+class PruebasReglasConORM(unittest.TestCase):
+    def ejecutar_regla(self, codigo: str) -> None:
+        with entorno_base_temporal() as (entorno, _ruta):
+            migracion = subprocess.run(
+                [sys.executable, "-m", "alembic", "upgrade", "head"],
+                cwd=RAIZ, env=entorno, capture_output=True, text=True,
+            )
+            self.assertEqual(migracion.returncode, 0, migracion.stderr)
+            resultado = subprocess.run(
+                [sys.executable, "-c", codigo],
+                cwd=RAIZ, env=entorno, capture_output=True, text=True,
+            )
+            self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)
 
     def test_reserva_activa_impide_venta_aunque_estado_sea_incoherente(self):
-        datos.vehiculos[3]["estado"] = "disponible"
-        antes = dict(datos.vehiculos[3])
-        with self.assertRaises(ErrorAplicacion) as fallo:
-            servicio.actualizar_vehiculo(3, VehiculoActualizar(estado="vendido", precio=1))
-        self.assertEqual(fallo.exception.estado_http, 409)
-        self.assertEqual(datos.vehiculos[3], antes)
+        self.ejecutar_regla(SEMBRAR + """
+from app.errores import ErrorAplicacion
+from app.schemas.vehiculo import VehiculoActualizar
+from app.services import vehiculos as servicio
+id_vehiculo = vehiculos[2].id
+with SessionLocal.begin() as session:
+    session.get(Vehiculo, id_vehiculo).estado = 'disponible'
+with SessionLocal() as session:
+    antes = session.get(Vehiculo, id_vehiculo).precio
+try:
+    servicio.actualizar_vehiculo(id_vehiculo, VehiculoActualizar(estado='vendido', precio=1))
+except ErrorAplicacion as error:
+    assert error.estado_http == 409
+else:
+    raise AssertionError('La venta con reserva activa fue aceptada')
+with SessionLocal() as session:
+    actual = session.get(Vehiculo, id_vehiculo)
+    assert (actual.estado, actual.precio) == ('disponible', antes)
+""")
 
     def test_historial_vencido_tambien_impide_eliminar(self):
-        datos.reservas[1]["estado"] = "vencida"
-        with self.assertRaises(ErrorAplicacion) as fallo:
-            servicio.eliminar_vehiculo(2)
-        self.assertEqual(fallo.exception.estado_http, 409)
-        self.assertIn(2, datos.vehiculos)
+        self.ejecutar_regla(SEMBRAR + """
+from app.errores import ErrorAplicacion
+from app.services import vehiculos as servicio
+id_vehiculo = vehiculos[1].id
+with SessionLocal.begin() as session:
+    session.query(Reserva).filter_by(vehiculo_id=id_vehiculo).one().estado = 'vencida'
+try:
+    servicio.eliminar_vehiculo(id_vehiculo)
+except ErrorAplicacion as error:
+    assert error.estado_http == 409
+else:
+    raise AssertionError('Se elimino un vehiculo con historial')
+with SessionLocal() as session:
+    assert session.get(Vehiculo, id_vehiculo) is not None
+""")
 
     def test_consulta_no_expone_registro_mutable_y_lista_vacia(self):
-        copia = repositorio.obtener(1)
-        copia["precio"] = 1
-        self.assertNotEqual(datos.vehiculos[1]["precio"], 1)
-        datos.vehiculos.clear()
-        self.assertEqual(servicio.listar_vehiculos(ConsultaVehiculos()),
-                         {"items": [], "total": 0, "pagina": 1, "limite": 10, "total_paginas": 0})
+        self.ejecutar_regla("""
+from app.db import SessionLocal
+from app.models import Sucursal, Vehiculo
+from app.schemas.vehiculo import ConsultaVehiculos
+from app.services import vehiculos as servicio
+with SessionLocal.begin() as session:
+    sucursal = Sucursal(nombre='Centro', direccion='A', ciudad='Temuco',
+        telefono='1', horario_atencion='9-18')
+    vehiculo = Vehiculo(marca='Toyota', modelo='Yaris', anio=2022,
+        precio=100, kilometraje=0, transmision='manual', condicion='usado',
+        estado='disponible', sucursal=sucursal)
+    session.add(vehiculo)
+    session.flush()
+    id_vehiculo = vehiculo.id
+copia = servicio.obtener_vehiculo(id_vehiculo)
+copia['precio'] = 1
+with SessionLocal() as session:
+    assert session.get(Vehiculo, id_vehiculo).precio == 100
+servicio.eliminar_vehiculo(id_vehiculo)
+assert servicio.listar_vehiculos(ConsultaVehiculos()) == {
+    'items': [], 'total': 0, 'pagina': 1, 'limite': 10, 'total_paginas': 0}
+""")

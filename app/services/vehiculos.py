@@ -1,16 +1,14 @@
 """Operaciones del modulo de vehiculos respaldadas por ORM."""
 
-from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from app.db import SessionLocal, initialize_database
+from app.db import SessionLocal
 from app.domain.vehiculo import EstadoVehiculo
 from app.errores import ErrorAplicacion
 from app.models import Vehiculo
 from app.repositories import vehiculos as repositorio
 from app.schemas.vehiculo import ConsultaVehiculos, VehiculoActualizar, VehiculoCrear
-
-initialize_database()
-
+from app.services.reservas import procesar_vencimientos_en_sesion
 
 def _registro(vehiculo: Vehiculo) -> dict[str, object]:
     return {campo: getattr(vehiculo, campo) for campo in (
@@ -19,7 +17,7 @@ def _registro(vehiculo: Vehiculo) -> dict[str, object]:
     )}
 
 
-def comprobar_sucursal(session, sucursal_id: int) -> None:
+def comprobar_sucursal(session: Session, sucursal_id: int) -> None:
     if not repositorio.sucursal_existe(session, sucursal_id):
         raise ErrorAplicacion(404, "RESOURCE_NOT_FOUND", "La sucursal no existe")
 
@@ -28,39 +26,30 @@ def crear_vehiculo(entrada: VehiculoCrear) -> dict[str, object]:
     with SessionLocal.begin() as session:
         comprobar_sucursal(session, entrada.sucursal_id)
         vehiculo = Vehiculo(**entrada.model_dump(), estado=EstadoVehiculo.DISPONIBLE.value)
-        session.add(vehiculo)
-        session.flush()
+        repositorio.guardar(session, vehiculo)
         return _registro(vehiculo)
 
 
 def listar_vehiculos(consulta: ConsultaVehiculos) -> dict[str, object]:
-    with SessionLocal() as session:
-        query = select(Vehiculo)
-        if consulta.marca is not None:
-            query = query.where(Vehiculo.marca.ilike(consulta.marca))
-        if consulta.estado is not None:
-            query = query.where(Vehiculo.estado == consulta.estado.value)
-        if consulta.sucursal_id is not None:
-            query = query.where(Vehiculo.sucursal_id == consulta.sucursal_id)
-        if consulta.precio_min is not None:
-            query = query.where(Vehiculo.precio >= consulta.precio_min)
-        if consulta.precio_max is not None:
-            query = query.where(Vehiculo.precio <= consulta.precio_max)
-        campo = getattr(Vehiculo, consulta.ordenar_por) if consulta.ordenar_por else Vehiculo.id
-        query = query.order_by(campo.desc() if consulta.direccion == "desc" else campo,
-                               Vehiculo.id)
-        encontrados = list(session.scalars(query))
-        total = len(encontrados)
-        inicio = (consulta.pagina - 1) * consulta.limite
+    with SessionLocal.begin() as session:
+        procesar_vencimientos_en_sesion(session)
+        encontrados, total = repositorio.consultar(
+            session, marca=consulta.marca,
+            estado=consulta.estado.value if consulta.estado is not None else None,
+            sucursal_id=consulta.sucursal_id, precio_min=consulta.precio_min,
+            precio_max=consulta.precio_max, ordenar_por=consulta.ordenar_por,
+            direccion=consulta.direccion, pagina=consulta.pagina, limite=consulta.limite,
+        )
         return {
-            "items": [_registro(v) for v in encontrados[inicio:inicio + consulta.limite]],
+            "items": [_registro(v) for v in encontrados],
             "total": total, "pagina": consulta.pagina, "limite": consulta.limite,
             "total_paginas": (total + consulta.limite - 1) // consulta.limite,
         }
 
 
 def obtener_vehiculo(id: int) -> dict[str, object]:
-    with SessionLocal() as session:
+    with SessionLocal.begin() as session:
+        procesar_vencimientos_en_sesion(session)
         vehiculo = repositorio.obtener(session, id)
         if vehiculo is None:
             raise ErrorAplicacion(404, "RESOURCE_NOT_FOUND", "El vehiculo no existe")
@@ -69,6 +58,7 @@ def obtener_vehiculo(id: int) -> dict[str, object]:
 
 def actualizar_vehiculo(id: int, entrada: VehiculoActualizar) -> dict[str, object]:
     with SessionLocal.begin() as session:
+        procesar_vencimientos_en_sesion(session)
         vehiculo = repositorio.obtener(session, id)
         if vehiculo is None:
             raise ErrorAplicacion(404, "RESOURCE_NOT_FOUND", "El vehiculo no existe")
@@ -83,12 +73,13 @@ def actualizar_vehiculo(id: int, entrada: VehiculoActualizar) -> dict[str, objec
                                       "Solo puede venderse un vehiculo disponible y sin reserva activa")
         for campo, valor in cambios.items():
             setattr(vehiculo, campo, valor.value if hasattr(valor, "value") else valor)
-        session.flush()
+        repositorio.guardar(session, vehiculo)
         return _registro(vehiculo)
 
 
 def eliminar_vehiculo(id: int) -> None:
     with SessionLocal.begin() as session:
+        procesar_vencimientos_en_sesion(session)
         vehiculo = repositorio.obtener(session, id)
         if vehiculo is None:
             raise ErrorAplicacion(404, "RESOURCE_NOT_FOUND", "El vehiculo no existe")

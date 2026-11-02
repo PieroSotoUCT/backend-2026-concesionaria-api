@@ -1,8 +1,10 @@
 """Pruebas aisladas del módulo de clientes."""
 
 import os
+import tempfile
 import unittest
 from unittest.mock import patch
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, delete
@@ -10,9 +12,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-# La variable se configura antes de importar la aplicación.
-# SQLite en memoria evita utilizar concesionaria.db.
-os.environ["CONCESIONARIA_DATABASE_URL"] = "sqlite://"
+# La aplicación usa la misma SQLite temporal que las pruebas de reservas.
+# Cada módulo mantiene además su propio motor en memoria para sus fixtures.
+TEST_DATABASE_PATH = Path(tempfile.gettempdir()) / f"concesionaria-tests-{os.getpid()}.db"
+os.environ["CONCESIONARIA_DATABASE_URL"] = f"sqlite:///{TEST_DATABASE_PATH.as_posix()}"
 
 from app.db import Base
 from app.db import engine as motor_aplicacion
