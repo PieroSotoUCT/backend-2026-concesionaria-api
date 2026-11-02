@@ -19,11 +19,13 @@ py -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-API y Alembic usan por defecto `sqlite:///./concesionaria.db`. Para elegir
-otra base, define la URL **antes** de migrar e iniciar:
+API y Alembic usan por defecto `sqlite:///./concesionaria.db`. Para iniciar
+normalmente, incluso si ya hay datos, desactiva primero la carga demo. Si
+quieres otra base, cambia la URL **antes** de migrar e iniciar:
 
 ```powershell
 $env:CONCESIONARIA_DATABASE_URL = "sqlite:///./concesionaria.db"
+Remove-Item Env:CONCESIONARIA_DATOS_DEMO -ErrorAction SilentlyContinue
 .\.venv\Scripts\python.exe -m alembic upgrade head
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
@@ -40,17 +42,23 @@ OpenAPI en <http://127.0.0.1:8000/openapi.json>.
 
 ## Datos iniciales opcionales
 
-En una **base vacia ya migrada**, activa los ejemplos ficticios al iniciar:
+Para practicar con ejemplos sin alterar `concesionaria.db`, detiene Uvicorn y
+crea una SQLite temporal nueva. Ejecuta todo en la misma terminal PowerShell:
 
 ```powershell
+$rutaDemo = Join-Path $env:TEMP ("concesionaria-demo-" + [guid]::NewGuid().ToString("N") + ".db")
+$env:CONCESIONARIA_DATABASE_URL = "sqlite:///$($rutaDemo.Replace('\', '/'))"
+.\.venv\Scripts\python.exe -m alembic upgrade head
 $env:CONCESIONARIA_DATOS_DEMO = "1"
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 Se crean dos sucursales, dos clientes, once vehiculos y dos reservas. Una
 reserva esta cancelada y otra activa. La carga exige una base completamente
-vacia y no borra datos. Para reiniciar el proceso conservando lo guardado,
-detiene Uvicorn, quita la variable y vuelve a iniciarlo:
+vacia y no borra datos. Si `CONCESIONARIA_DATOS_DEMO` queda en `1`, un segundo
+inicio sobre esa misma base falla porque los ejemplos ya existen. Para
+comprobar persistencia, detiene Uvicorn, quita la variable y vuelve a iniciarlo
+sin cambiar `CONCESIONARIA_DATABASE_URL`:
 
 ```powershell
 Remove-Item Env:CONCESIONARIA_DATOS_DEMO
