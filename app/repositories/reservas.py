@@ -1,5 +1,7 @@
 """Consultas ORM de reservas y relaciones de disponibilidad."""
 
+from datetime import date
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -12,6 +14,15 @@ def listar(session: Session) -> list[Reserva]:
 
 def listar_activas(session: Session) -> list[Reserva]:
     return list(session.scalars(select(Reserva).where(Reserva.estado == "activa")))
+
+
+def listar_vencidas(session: Session, hoy: date) -> list[Reserva]:
+    return list(session.scalars(
+        select(Reserva).where(
+            Reserva.estado == "activa",
+            Reserva.fecha_vencimiento < hoy,
+        ).order_by(Reserva.id)
+    ))
 
 
 def obtener(session: Session, id: int) -> Reserva | None:
@@ -32,5 +43,14 @@ def tiene_otra_reserva_activa(session: Session, vehiculo_id: int, excepto_id: in
             Reserva.vehiculo_id == vehiculo_id,
             Reserva.estado == "activa",
             Reserva.id != excepto_id,
+        ).limit(1)
+    ) is not None
+
+
+def tiene_reserva_activa(session: Session, vehiculo_id: int) -> bool:
+    return session.scalar(
+        select(Reserva.id).where(
+            Reserva.vehiculo_id == vehiculo_id,
+            Reserva.estado == "activa",
         ).limit(1)
     ) is not None

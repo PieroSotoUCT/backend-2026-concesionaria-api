@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.db import SessionLocal, initialize_database
 from app.domain.reserva import EstadoReserva
@@ -23,17 +23,22 @@ def _registro(reserva: Reserva) -> dict[str, object]:
     }
 
 
-def procesar_vencimientos(hoy: date | None = None) -> int:
+def procesar_vencimientos_en_sesion(session: Session, hoy: date | None = None) -> int:
+    """Actualiza vencimientos en la transaccion que confirma el llamador."""
     hoy = hoy or date.today()
+    vencidas = repositorio.listar_vencidas(session, hoy)
+    for reserva in vencidas:
+        reserva.estado = EstadoReserva.VENCIDA.value
+    session.flush()
+    for reserva in vencidas:
+        _liberar_vehiculo(session, reserva)
+    return len(vencidas)
+
+
+def procesar_vencimientos(hoy: date | None = None) -> int:
+    """Procesa vencimientos y confirma una transaccion independiente."""
     with SessionLocal.begin() as session:
-        vencidas = 0
-        for reserva in repositorio.listar_activas(session):
-            if reserva.fecha_vencimiento >= hoy:
-                continue
-            reserva.estado = EstadoReserva.VENCIDA.value
-            _liberar_vehiculo(session, reserva)
-            vencidas += 1
-        return vencidas
+        return procesar_vencimientos_en_sesion(session, hoy)
 
 
 def _liberar_vehiculo(session, reserva: Reserva) -> None:
@@ -46,7 +51,7 @@ def _liberar_vehiculo(session, reserva: Reserva) -> None:
 
 def crear_reserva(entrada: ReservaCrear) -> dict[str, object]:
     with SessionLocal.begin() as session:
-        _procesar_vencimientos(session, date.today())
+        procesar_vencimientos_en_sesion(session)
         if not repositorio.cliente_existe(session, entrada.cliente_id):
             raise ErrorAplicacion(404, "RESOURCE_NOT_FOUND", "El cliente no existe")
         vehiculo = repositorio.obtener_vehiculo(session, entrada.vehiculo_id)
@@ -56,9 +61,11 @@ def crear_reserva(entrada: ReservaCrear) -> dict[str, object]:
         if entrada.fecha_vencimiento < hoy:
             raise ErrorAplicacion(400, "INVALID_EXPIRATION_DATE",
                                   "La fecha de vencimiento no puede ser anterior a hoy")
-        if vehiculo.estado != "disponible":
+        if (vehiculo.estado != "disponible"
+                or repositorio.tiene_reserva_activa(session, vehiculo.id)):
             raise ErrorAplicacion(409, "VEHICLE_NOT_AVAILABLE",
-                                  "Solo se puede reservar un vehiculo disponible")
+                                  "Solo se puede reservar un vehiculo disponible "
+                                  "y sin otra reserva activa")
         reserva = Reserva(
             cliente_id=entrada.cliente_id, vehiculo_id=entrada.vehiculo_id,
             fecha_reserva=hoy, fecha_vencimiento=entrada.fecha_vencimiento,
@@ -70,22 +77,15 @@ def crear_reserva(entrada: ReservaCrear) -> dict[str, object]:
         return _registro(reserva)
 
 
-def _procesar_vencimientos(session, hoy: date) -> None:
-    for reserva in repositorio.listar_activas(session):
-        if reserva.fecha_vencimiento < hoy:
-            reserva.estado = EstadoReserva.VENCIDA.value
-            _liberar_vehiculo(session, reserva)
-
-
 def listar_reservas() -> list[dict[str, object]]:
-    procesar_vencimientos()
-    with SessionLocal() as session:
+    with SessionLocal.begin() as session:
+        procesar_vencimientos_en_sesion(session)
         return [_registro(reserva) for reserva in repositorio.listar(session)]
 
 
 def obtener_reserva(id: int) -> dict[str, object]:
-    procesar_vencimientos()
-    with SessionLocal() as session:
+    with SessionLocal.begin() as session:
+        procesar_vencimientos_en_sesion(session)
         reserva = repositorio.obtener(session, id)
         if reserva is None:
             raise ErrorAplicacion(404, "RESOURCE_NOT_FOUND", "La reserva no existe")
@@ -94,7 +94,7 @@ def obtener_reserva(id: int) -> dict[str, object]:
 
 def cancelar_reserva(id: int) -> dict[str, object]:
     with SessionLocal.begin() as session:
-        _procesar_vencimientos(session, date.today())
+        procesar_vencimientos_en_sesion(session)
         reserva = repositorio.obtener(session, id)
         if reserva is None:
             raise ErrorAplicacion(404, "RESOURCE_NOT_FOUND", "La reserva no existe")
