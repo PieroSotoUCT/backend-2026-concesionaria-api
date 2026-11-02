@@ -123,5 +123,4 @@ reiniciar Uvicorn. `limpiar_base()` se usa solo sobre bases temporales de
 prueba; no lo ejecutes sobre `concesionaria.db` ni sobre una API en uso.
 Los diagramas estan en [docs/diagramas.md](docs/diagramas.md) y los casos
 reproducibles en [docs/evidencias-pruebas.md](docs/evidencias-pruebas.md).
-El numero de grupo, el nombre academico del repositorio y la autorizacion
-de un equipo de tres requieren confirmacion docente.
+La presentacion del proyecto es el 2 de noviembre de 2026 a las 10:05.

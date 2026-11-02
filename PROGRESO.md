@@ -30,13 +30,3 @@ el dato actualizado siguió disponible. Los casos reproducibles están en
 El historial Git conserva al menos cinco commits significativos por
 integrante, ramas individuales y los PR de trabajo. No se alteraron autores,
 fechas ni commits anteriores.
-
-## Defensa y datos académicos
-
-Cada integrante debe poder explicar el flujo router → esquema → servicio →
-repositorio → ORM/SQLite, además de las reglas de disponibilidad, migración,
-pruebas y persistencia tras reiniciar. La guía indica 10 minutos de exposición,
-5 de preguntas y un máximo de 15 diapositivas; se sortea quién expone.
-
-Queda por confirmar con el docente la fecha exacta, el número y nombre del
-grupo y la autorización de un equipo de tres personas.
