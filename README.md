@@ -6,11 +6,9 @@ persisten en SQLite mediante SQLAlchemy y Alembic prepara el esquema.
 
 ## Estado y requisitos
 
-`main` ya incorporo los PR #1 (vehiculos), #2 (reservas), #3 (clientes y
-sucursales) y #4 (ORM). Tiene los 15 endpoints de negocio acordados y
-`GET /health`. La rama `fix/base-vehiculos-integracion` prepara correcciones
-de base y vehiculos pendientes de integrar. Campos, estados y errores estan
-en [CONTRATO.md](CONTRATO.md).
+La API integrada tiene los 15 endpoints de negocio acordados y `GET /health`.
+Las cuatro entidades se guardan mediante ORM; los campos, estados y errores
+estan en [CONTRATO.md](CONTRATO.md).
 
 ## Instalacion y configuracion en PowerShell
 
@@ -49,8 +47,8 @@ $env:CONCESIONARIA_DATOS_DEMO = "1"
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Se crean dos sucursales, un cliente, tres vehiculos y dos reservas. El
-vehiculo 2 tiene una reserva cancelada y el 3 una activa. La carga exige base
+Se crean dos sucursales, dos clientes, once vehiculos y dos reservas. Una
+reserva esta cancelada y otra activa. La carga exige una base completamente
 vacia y no borra datos. Para reiniciar el proceso conservando lo guardado,
 detiene Uvicorn, quita la variable y vuelve a iniciarlo:
 
@@ -59,9 +57,8 @@ Remove-Item Env:CONCESIONARIA_DATOS_DEMO
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-El requisito academico pide dos registros por entidad. Falta un segundo
-cliente en `app/datos_demo.py`, archivo a cargo de Gabriel. Los ejemplos no
-sustituyen las fixtures de pruebas.
+Los ejemplos cumplen el minimo de dos registros por entidad y no sustituyen
+las fixtures de pruebas.
 
 ## Endpoints
 
@@ -101,10 +98,10 @@ Una solicitud de vehiculos recorre `app/routers/vehiculos.py` (HTTP),
 ORM a respuesta. `app/domain/vehiculo.py` define valores permitidos.
 Reservas guarda la reserva y el estado del vehiculo en una transaccion propia.
 
-Los servicios de clientes y sucursales aun hacen consultas ORM directamente;
-Gabriel debe moverlas a sus repositorios. La funcion publica de vencimientos
-de Roberto se ejecuta antes de consultas y cambios de vehiculos, pero abre
-una transaccion separada; queda pendiente una interfaz con sesion compartida.
+Los servicios de clientes y sucursales delegan sus consultas ORM a sus
+repositorios. Vehiculos llama a `procesar_vencimientos_en_sesion(session)`
+antes de consultar o modificar disponibilidad; el vencimiento y la operacion
+comparten la transaccion, de modo que un error revierte ambos cambios.
 
 Las relaciones son sucursal 1:N vehiculos, cliente 1:N reservas y vehiculo
 1:N reservas historicas. SQLite comprueba claves foraneas por conexion. La
@@ -113,21 +110,18 @@ base antigua no conserva informacion sobre IDs borrados antes de migrarla.
 
 ## Pruebas y evidencias
 
-Las pruebas propias preparan SQLite temporal, aplican Alembic, crean
-fixtures ORM y pasan la misma URL al proceso HTTP:
+Las pruebas preparan SQLite temporal, aplican Alembic, crean fixtures ORM y
+pasan la misma URL a sus procesos HTTP. Para ejecutar la suite completa:
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest tests.test_base_piero tests.test_vehiculos tests.test_vehiculos_orm -v
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
 Cubren CRUD, validaciones, reglas, filtros, orden, paginacion, vencimientos,
-claves foraneas, migracion y no reutilizacion de IDs. No ejecutes
-`limpiar_base()` sobre `concesionaria.db` ni sobre una API en uso. Las pruebas
-de Gabriel y Roberto aun requieren fixtures ORM aisladas; sus fallos se
-registran en [docs/avance-piero.md](docs/avance-piero.md).
-
-Faltan el segundo cliente del seeder, los diagramas de clases y datos de
-Gabriel, y las seis evidencias reproducibles de Roberto. La persistencia tras
-reiniciar debe demostrarse con la misma base y sin recargar el seeder. El
-numero de grupo, el nombre academico del repositorio y la autorizacion de
-un equipo de tres requieren confirmacion docente.
+claves foraneas, migracion, no reutilizacion de IDs y persistencia tras
+reiniciar Uvicorn. `limpiar_base()` se usa solo sobre bases temporales de
+prueba; no lo ejecutes sobre `concesionaria.db` ni sobre una API en uso.
+Los diagramas estan en [docs/diagramas.md](docs/diagramas.md) y los casos
+reproducibles en [docs/evidencias-pruebas.md](docs/evidencias-pruebas.md).
+El numero de grupo, el nombre academico del repositorio y la autorizacion
+de un equipo de tres requieren confirmacion docente.

@@ -46,6 +46,47 @@ def solicitar_json(
 
 
 class PruebasVehiculosORM(unittest.TestCase):
+    def test_error_vehiculo_revierte_vencimiento(self):
+        with entorno_base_temporal() as (entorno, _ruta):
+            subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"],
+                           cwd=RAIZ, env=entorno, check=True, capture_output=True, text=True)
+            comprobar = """
+from datetime import date, timedelta
+from app.db import SessionLocal
+from app.errores import ErrorAplicacion
+from app.models import Cliente, Reserva, Sucursal, Vehiculo
+from app.schemas.vehiculo import VehiculoActualizar
+from app.services.vehiculos import actualizar_vehiculo
+with SessionLocal.begin() as session:
+    sucursal = Sucursal(nombre='Centro', direccion='A', ciudad='Temuco',
+                        telefono='1', horario_atencion='9-18')
+    cliente = Cliente(rut='12345678-9', nombre='Ana', correo='ana@example.com',
+                      telefono='3', direccion='C')
+    vehiculo = Vehiculo(marca='Prueba', modelo='Vencido', anio=2022,
+                        precio=100, kilometraje=0, transmision='manual',
+                        condicion='usado', estado='reservado', sucursal=sucursal)
+    session.add_all([sucursal, cliente, vehiculo])
+    session.flush()
+    reserva = Reserva(cliente=cliente, vehiculo=vehiculo,
+                      fecha_reserva=date.today() - timedelta(days=2),
+                      fecha_vencimiento=date.today() - timedelta(days=1),
+                      monto_reserva=10, estado='activa')
+    session.add(reserva)
+    session.flush()
+    vehiculo_id, reserva_id = vehiculo.id, reserva.id
+try:
+    actualizar_vehiculo(vehiculo_id, VehiculoActualizar(sucursal_id=999))
+except ErrorAplicacion as error:
+    assert error.estado_http == 404
+else:
+    raise AssertionError('La sucursal inexistente debio fallar')
+with SessionLocal() as session:
+    assert session.get(Reserva, reserva_id).estado == 'activa'
+    assert session.get(Vehiculo, vehiculo_id).estado == 'reservado'
+"""
+            subprocess.run([sys.executable, "-c", comprobar], cwd=RAIZ,
+                           env=entorno, check=True, capture_output=True, text=True)
+
     def test_crud_consulta_reglas_y_vencimiento(self):
         with entorno_base_temporal() as (entorno, _ruta):
             subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"],

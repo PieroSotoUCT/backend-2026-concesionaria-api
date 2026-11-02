@@ -168,3 +168,21 @@ Se necesitan el diagrama de clases y datos y seis casos con entrada, esperado
 y obtenido; la prueba de persistencia debe parar e iniciar de nuevo Uvicorn
 sin recargar el seeder. Estas tareas siguen con sus responsables y no se
 marcan completas.
+
+## Integración final y preparación de defensa
+
+El 2 de noviembre de 2026 se incorporaron a la rama de integración el PR #6
+de Roberto y los cambios del PR #5 de Gabriel, sin conflictos. Vehículos usa
+`procesar_vencimientos_en_sesion(session)` en la misma transacción para
+listar, consultar, actualizar y eliminar. Una prueba nueva confirmó que un
+PATCH fallido revierte también el vencimiento procesado.
+
+La suite completa ejecutó **53 pruebas sin fallos** con SQLite temporal.
+Desde una base nueva, Alembic y el seeder crearon 2 clientes, 2 sucursales,
+11 vehículos y 2 reservas. OpenAPI publicó 15 operaciones de negocio; 16
+solicitudes HTTP resultaron correctas y un dato permaneció tras reiniciar
+Uvicorn sin repetir el seeder. El detalle está en
+`docs/evidencias-pruebas.md`. Se actualizaron README y PROGRESO para reflejar
+el estado integrado y se preparó `docs/guion-defensa.md` para el estudio del
+equipo. Las notas anteriores de este archivo conservan el estado histórico
+de cada etapa.

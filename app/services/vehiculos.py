@@ -8,7 +8,7 @@ from app.errores import ErrorAplicacion
 from app.models import Vehiculo
 from app.repositories import vehiculos as repositorio
 from app.schemas.vehiculo import ConsultaVehiculos, VehiculoActualizar, VehiculoCrear
-from app.services.reservas import procesar_vencimientos
+from app.services.reservas import procesar_vencimientos_en_sesion
 
 def _registro(vehiculo: Vehiculo) -> dict[str, object]:
     return {campo: getattr(vehiculo, campo) for campo in (
@@ -31,8 +31,8 @@ def crear_vehiculo(entrada: VehiculoCrear) -> dict[str, object]:
 
 
 def listar_vehiculos(consulta: ConsultaVehiculos) -> dict[str, object]:
-    procesar_vencimientos()
-    with SessionLocal() as session:
+    with SessionLocal.begin() as session:
+        procesar_vencimientos_en_sesion(session)
         encontrados, total = repositorio.consultar(
             session, marca=consulta.marca,
             estado=consulta.estado.value if consulta.estado is not None else None,
@@ -48,8 +48,8 @@ def listar_vehiculos(consulta: ConsultaVehiculos) -> dict[str, object]:
 
 
 def obtener_vehiculo(id: int) -> dict[str, object]:
-    procesar_vencimientos()
-    with SessionLocal() as session:
+    with SessionLocal.begin() as session:
+        procesar_vencimientos_en_sesion(session)
         vehiculo = repositorio.obtener(session, id)
         if vehiculo is None:
             raise ErrorAplicacion(404, "RESOURCE_NOT_FOUND", "El vehiculo no existe")
@@ -57,8 +57,8 @@ def obtener_vehiculo(id: int) -> dict[str, object]:
 
 
 def actualizar_vehiculo(id: int, entrada: VehiculoActualizar) -> dict[str, object]:
-    procesar_vencimientos()
     with SessionLocal.begin() as session:
+        procesar_vencimientos_en_sesion(session)
         vehiculo = repositorio.obtener(session, id)
         if vehiculo is None:
             raise ErrorAplicacion(404, "RESOURCE_NOT_FOUND", "El vehiculo no existe")
@@ -78,8 +78,8 @@ def actualizar_vehiculo(id: int, entrada: VehiculoActualizar) -> dict[str, objec
 
 
 def eliminar_vehiculo(id: int) -> None:
-    procesar_vencimientos()
     with SessionLocal.begin() as session:
+        procesar_vencimientos_en_sesion(session)
         vehiculo = repositorio.obtener(session, id)
         if vehiculo is None:
             raise ErrorAplicacion(404, "RESOURCE_NOT_FOUND", "El vehiculo no existe")

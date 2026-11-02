@@ -1,67 +1,42 @@
 # Progreso del equipo
 
-## Estado integrado en `main`
+## Estado de la integración
 
-`origin/main` esta en `615cc3c`. Incorpora PR #1 (vehiculos), PR #2
-(reservas), PR #3 (clientes y sucursales) y PR #4 (SQLAlchemy y Alembic).
-Registra 15 endpoints de negocio y `GET /health`. Tener codigo integrado no
-equivale aun a cumplir todos los requisitos de la guia.
+Las cuatro entidades (sucursales, clientes, vehículos y reservas) persisten
+mediante SQLAlchemy en SQLite. Alembic crea el esquema y conserva las
+relaciones. La API publica 15 operaciones de negocio y `GET /health`.
 
-## Piero Soto: base compartida y vehiculos
+La suite conjunta ejecuta 53 pruebas en bases temporales y pasó sin fallos.
+En una base nueva, Alembic y el seeder generaron 2 clientes, 2 sucursales,
+11 vehículos y 2 reservas. Se verificaron OpenAPI, 16 solicitudes HTTP de
+los cuatro módulos y un reinicio real de Uvicorn sin recargar el seeder;
+el dato actualizado siguió disponible. Los casos reproducibles están en
+[docs/evidencias-pruebas.md](docs/evidencias-pruebas.md).
 
-- El PR #1 se fusiono en `main` mediante `69211fd`. Los cinco commits de
-  desarrollo de vehiculos siguen en el historial: `579303e`, `2ca4a92`,
-  `0d8fa40`, `26815be` y `6ba2ea0`.
-- Rama actual `fix/base-vehiculos-integracion`: commits `b3f70f4` (base,
-  migracion reproducible y pruebas temporales) y `363aada` (repositorio ORM
-  de vehiculos y vencimientos) subidos a `origin`.
-- Etapa 3 guardada en `4b4a078`: migracion nueva para IDs,
-  `tests/test_vehiculos.py` con fixtures ORM y ejemplos `.http` corregidos.
-  Resultado: 18 pruebas propias aprobadas y 33 solicitudes manuales con
-  codigos esperados sobre SQLite temporal. Detalle en
-  [docs/avance-piero.md](docs/avance-piero.md).
-- Etapa 4 documenta el estado real en README y contrato y registra pendientes
-  de los otros modulos sin modificar sus archivos. La integracion completa
-  depende de las correcciones y entregables de sus responsables.
+## Aportes por integrante
 
-## Gabriel Rivas: clientes y sucursales
+- **Piero Soto:** conexión y migraciones, contrato y errores compartidos,
+  repositorio y cinco rutas de vehículos, pruebas aisladas e integración
+  final. Vehículos procesa vencimientos en la misma sesión y transacción.
+  Los detalles de cada etapa están en [docs/avance-piero.md](docs/avance-piero.md).
+- **Gabriel Rivas:** clientes, sucursales, seeder de cuatro entidades,
+  diagramas y pruebas ORM de sus módulos. Su avance está en
+  [docs/avance-gabriel.md](docs/avance-gabriel.md) y los diagramas en
+  [docs/diagramas.md](docs/diagramas.md).
+- **Roberto González:** reservas, vencimientos, pruebas de integración ORM
+  y evidencia. Su avance está en [docs/avance-roberto.md](docs/avance-roberto.md).
+  Sus commits antiguos con autor `Dev Reservas` están atribuidos en ese archivo.
 
-- El PR #3 se fusiono mediante `3284e81`. Hay seis rutas registradas y
-  servicios que persisten con ORM.
-- `app/services/clientes.py` y `app/services/sucursales.py` aun hacen
-  consultas SQLAlchemy directamente. Sus repositorios conservan codigo
-  antiguo sobre colecciones inexistentes. Gabriel debe mover el acceso ORM
-  a esos repositorios sin cambiar el contrato HTTP.
-- En SQLite temporal migrada, `tests.test_clientes` y
-  `tests.test_sucursales` fallan: intentan acceder a `datos.vehiculos` y sus
-  servidores de prueba terminan antes de iniciar. Gabriel debe migrar sus
-  fixtures y establecer la URL de prueba antes de importar `app.db`.
-- `app/datos_demo.py` crea solo un cliente; la guia pide al menos dos por
-  entidad. Faltan `docs/diagramas.md` y diagramas de clases y datos.
+El historial Git conserva al menos cinco commits significativos por
+integrante, ramas individuales y los PR de trabajo. No se alteraron autores,
+fechas ni commits anteriores.
 
-## Roberto Gonzalez: reservas y pruebas del conjunto
+## Defensa y datos académicos
 
-- El PR #2 se fusiono mediante `203cd81` y el PR #4 mediante `615cc3c`.
-  Reservas usa ORM y tiene cuatro rutas.
-- En SQLite temporal migrada, `tests.test_reservas` falla por referencias a
-  `datos.vehiculos` y por el arranque del servidor. En
-  `tests.test_orm_integracion`, uno de dos casos falla porque presupone
-  `cliente_id=1` tras limpiar registros; los IDs ahora siguen creciendo.
-  Roberto debe crear fixtures ORM propias con IDs capturados y aislar la base
-  antes de importar `app.db`.
-- Para integrar vencimientos en una sola transaccion con vehiculos, Roberto
-  debe exponer una funcion que reciba la sesion ORM activa. Falta
-  `docs/evidencias-pruebas.md` con seis casos reproducibles, incluido reinicio
-  real del proceso.
-- Los commits antiguos del PR #2 muestran el autor
-  `Dev Reservas <dev.reservas@example.invalid>`; Roberto debe confirmar su
-  atribucion. No se reescribio su historial.
+Cada integrante debe poder explicar el flujo router → esquema → servicio →
+repositorio → ORM/SQLite, además de las reglas de disponibilidad, migración,
+pruebas y persistencia tras reiniciar. La guía indica 10 minutos de exposición,
+5 de preguntas y un máximo de 15 diapositivas; se sortea quién expone.
 
-## Entrega del grupo
-
-- Confirmar con el docente el numero y nombre del grupo, la autorizacion
-  para tres integrantes y la fecha exacta.
-- Completar seeder, diagramas y evidencias; ejecutar la suite entera solo
-  despues de asegurar bases temporales para todos los procesos de prueba.
-- Desde una copia limpia, migrar, cargar ejemplos, verificar OpenAPI y los
-  15 endpoints; demostrar persistencia tras reiniciar sin recargar el seeder.
+Queda por confirmar con el docente la fecha exacta, el número y nombre del
+grupo y la autorización de un equipo de tres personas.

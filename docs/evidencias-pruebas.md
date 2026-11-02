@@ -2,7 +2,7 @@
 
 ## Entorno y comandos ejecutados
 
-Las pruebas propias de reservas e integracion usan una SQLite en la carpeta
+Las pruebas de reservas, clientes y sucursales usan una SQLite en la carpeta
 temporal del sistema, con un nombre que incluye el PID del proceso. Configuran
 `CONCESIONARIA_DATABASE_URL` antes de importar `app.db`, ejecutan
 `alembic upgrade head` antes de insertar fixtures y heredan la misma URL en
@@ -15,6 +15,7 @@ Comandos ejecutados desde la raiz del proyecto:
 .\.venv\Scripts\python.exe -m unittest tests.test_orm_integracion tests.test_reservas
 .\.venv\Scripts\python.exe -m unittest tests.test_reservas
 .\.venv\Scripts\python.exe -m unittest tests.test_orm_integracion
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
 Resultados reales:
@@ -22,13 +23,9 @@ Resultados reales:
 - Ambos modulos juntos: 20 pruebas, correcto.
 - `test_reservas`: 17 pruebas, correcto.
 - `test_orm_integracion`: 3 pruebas, correcto.
-- `compileall` para `app` y `tests`, y `git diff --check`: correctos.
-
-La suite completa no se ejecuto: las pruebas existentes de clientes y
-sucursales aun preparan colecciones en memoria, y las de vehiculos dependen de
-datos demo. No se comprobo que esas pruebas aislen la base antes de importar
-la aplicacion. Sus resultados se dejan pendientes; no se ejecutaron contra la
-base configurada por defecto.
+- Suite completa de integracion: 53 pruebas aprobadas en SQLite temporal.
+- `compileall` para `app` y `tests`, y `git diff --check`: correctos en la
+  revision individual anterior.
 
 ## Casos ejecutados
 
@@ -46,7 +43,7 @@ base configurada por defecto.
 - **Obtenido:** Las respuestas y estados persistidos cumplieron las
   expectativas del test.
 - **Estado:** Aprobado en pruebas propias. El contrato de reservas no define
-  DELETE; el CRUD completo de vehiculos queda pendiente en VEH-CRUD-01.
+  DELETE; el CRUD completo de vehiculos se comprueba en VEH-CRUD-01.
 
 ### RSV-INVALID-01 — Datos de entrada invalidos
 
@@ -131,47 +128,51 @@ base configurada por defecto.
   creada y una sesion independiente confirmo el estado reservado.
 - **Estado:** Aprobado en `test_persistencia_tras_reiniciar_proceso_sin_seeder`.
 
-## Casos pendientes de integracion
+## Casos de integracion comprobados
 
 ### VEH-CRUD-01 — CRUD completo de vehiculos
 
 - **Requisito:** Crear, consultar, actualizar y eliminar segun las reglas del
   contrato.
-- **Preparacion:** Pendiente de fixtures ORM y base temporal propios del
-  modulo.
-- **Entrada/comando:** Pendiente de validacion con el responsable del modulo.
-- **Esperado:** Respuestas y estados coherentes con el contrato.
-- **Obtenido:** No ejecutado; no se registra un resultado supuesto.
-- **Responsable/estado:** Piero; pendiente.
+- **Preparacion:** SQLite temporal migrada y fixtures ORM del modulo.
+- **Entrada/comando:** `tests.test_vehiculos` y `tests.test_vehiculos_orm`:
+  POST, GET, PATCH y DELETE `/vehiculos` con IDs obtenidos de las respuestas.
+- **Esperado:** 201 al crear, 200 al consultar y actualizar, 204 al eliminar;
+  no se reutiliza el ID eliminado.
+- **Obtenido:** Las respuestas, estados y el ID nuevo cumplieron lo esperado.
+- **Responsable/estado:** Piero; aprobado en la suite completa.
 
 ### VEH-QUERY-01 — Filtros, orden y paginacion
 
 - **Requisito:** Verificar filtros, orden, desempate por ID, limites y
   metadatos de paginacion.
-- **Preparacion:** Pendiente de ejecutar pruebas ORM aisladas del modulo de
-  vehiculos.
-- **Entrada/comando:** Pendiente; no ejecutar el test actual del modulo hasta
-  confirmar que no usa la base de desarrollo.
-- **Esperado:** Resultados y totales conforme a `CONTRATO.md`.
-- **Obtenido:** No ejecutado; no se registra un resultado supuesto.
-- **Responsable/estado:** Piero; pendiente.
+- **Preparacion:** SQLite temporal migrada con vehiculos de distintas marcas,
+  sucursales, precios y estados.
+- **Entrada/comando:** `GET /vehiculos` con marca, estado, sucursal, rango de
+  precio, orden descendente, pagina y limite en `tests.test_vehiculos_orm`.
+- **Esperado:** Filtrar, ordenar y paginar en ese orden; `total` anterior a la
+  paginacion y desempate por ID.
+- **Obtenido:** Los IDs y metadatos de ambas paginas coincidieron con lo
+  esperado.
+- **Responsable/estado:** Piero; aprobado en la suite completa.
 
 ### INT-CLIENTES-SUCURSALES-01 — Persistencia y reglas de clientes y sucursales
 
 - **Requisito:** Verificar altas, consultas, referencias y validaciones de los
   modulos integrados.
-- **Preparacion:** Pendiente de reemplazar el sembrado en memoria por fixtures
-  ORM temporales.
-- **Entrada/comando:** Pendiente; las pruebas existentes aun acceden a
-  colecciones en memoria.
+- **Preparacion:** Motores SQLite temporales y fixtures ORM de cada modulo.
+- **Entrada/comando:** `tests.test_clientes` y `tests.test_sucursales`:
+  creacion, listado, consulta, datos invalidos, 404 y RUT duplicado.
 - **Esperado:** Rutas y persistencia coherentes con el contrato.
-- **Obtenido:** No ejecutado; no se registra un resultado supuesto.
-- **Responsable/estado:** Gabriel; pendiente.
+- **Obtenido:** Sus 14 pruebas pasaron dentro de la suite completa.
+- **Responsable/estado:** Gabriel; aprobado en la suite completa.
 
-## Auditoria global pendiente
+## Auditoria global
 
-No se ejecutaron la suite completa, la migracion integral desde cero, el
-seeder de todas las entidades ni la recuperacion de disponibilidad mediante
-`GET /vehiculos`. Esas comprobaciones requieren completar el aislamiento y la
-evidencia de los modulos de Piero y Gabriel. No se alteraron sus pruebas ni
-sus implementaciones.
+Se aplico Alembic desde una SQLite vacia y el seeder creo 2 clientes,
+2 sucursales, 11 vehiculos y 2 reservas. OpenAPI expuso las 15 operaciones
+de negocio; 16 solicitudes HTTP de los cuatro modulos respondieron segun lo
+esperado. Tras detener e iniciar Uvicorn con la misma base y sin repetir el
+seeder, `GET /vehiculos/{id}` devolvio el precio actualizado en el primer
+proceso. La suite completa aprobo 53 pruebas, incluido el rollback conjunto
+del vencimiento y una actualizacion fallida de vehiculo.
