@@ -1,4 +1,3 @@
-
 """Pruebas aisladas del módulo de sucursales."""
 
 import os
@@ -13,8 +12,8 @@ from sqlalchemy.pool import StaticPool
 # Configura SQLite en memoria antes de importar la aplicación.
 os.environ["CONCESIONARIA_DATABASE_URL"] = "sqlite://"
 
-from app.db import Base  # noqa: E402
-from app.models import Sucursal  # noqa: E402
+from app.db import Base
+from app.models import Sucursal
 
 motor_pruebas = create_engine(
     "sqlite://",
@@ -29,7 +28,7 @@ SesionPruebas = sessionmaker(
 )
 
 # Importa la aplicación después de configurar el entorno.
-from app.main import app  # noqa: E402
+from app.main import app
 
 cliente_http = TestClient(app)
 
@@ -131,9 +130,7 @@ class PruebasSucursales(unittest.TestCase):
         )
         sucursal = creada.json()
 
-        respuesta = self.client.get(
-            f"/sucursales/{sucursal['id']}"
-        )
+        respuesta = self.client.get(f"/sucursales/{sucursal['id']}")
 
         self.assertEqual(respuesta.status_code, 200)
         self.assertEqual(respuesta.json(), sucursal)

@@ -1,4 +1,3 @@
-
 """Operaciones transaccionales y reglas de negocio de clientes."""
 
 from app.db import SessionLocal, initialize_database

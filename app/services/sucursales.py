@@ -1,4 +1,3 @@
-
 """Operaciones transaccionales y reglas de negocio de sucursales."""
 
 from app.db import SessionLocal, initialize_database

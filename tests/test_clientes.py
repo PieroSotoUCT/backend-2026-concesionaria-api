@@ -1,4 +1,3 @@
-
 """Pruebas aisladas del módulo de clientes."""
 
 import os
@@ -10,14 +9,14 @@ from sqlalchemy import create_engine, delete
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-
 # La variable se configura antes de importar la aplicación.
 # SQLite en memoria evita utilizar concesionaria.db.
 os.environ["CONCESIONARIA_DATABASE_URL"] = "sqlite://"
 
 
-from app.db import Base, engine as motor_aplicacion  # noqa: E402
-from app.models import Cliente  # noqa: E402
+from app.db import Base
+from app.db import engine as motor_aplicacion
+from app.models import Cliente
 
 motor_pruebas = create_engine(
     "sqlite://",
@@ -32,7 +31,7 @@ SesionPruebas = sessionmaker(
 )
 
 # Se importa la aplicación después de configurar el entorno.
-from app.main import app  # noqa: E402
+from app.main import app
 
 cliente_http = TestClient(app)
 

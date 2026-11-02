@@ -15,4 +15,3 @@ class SucursalCrear(BaseModel):
 
 class SucursalRespuesta(SucursalCrear):
     id: int
-
