@@ -31,6 +31,7 @@ app = FastAPI(
 )
 
 
+@app.exception_handler(ErrorAplicacion)
 def manejar_error_aplicacion(_solicitud: Request, error: ErrorAplicacion) -> JSONResponse:
     return JSONResponse(
         status_code=error.estado_http,
@@ -38,6 +39,7 @@ def manejar_error_aplicacion(_solicitud: Request, error: ErrorAplicacion) -> JSO
     )
 
 
+@app.exception_handler(RequestValidationError)
 def manejar_validacion(_solicitud: Request, error: RequestValidationError) -> JSONResponse:
     detalles = [
         {
@@ -52,6 +54,7 @@ def manejar_validacion(_solicitud: Request, error: RequestValidationError) -> JS
     )
 
 
+@app.exception_handler(StarletteHTTPException)
 def manejar_http(_solicitud: Request, error: StarletteHTTPException) -> JSONResponse:
     if error.status_code == 404:
         codigo, mensaje = "RESOURCE_NOT_FOUND", "Ruta no encontrada"
@@ -66,9 +69,6 @@ def manejar_http(_solicitud: Request, error: StarletteHTTPException) -> JSONResp
     )
 
 
-app.add_exception_handler(ErrorAplicacion, manejar_error_aplicacion)
-app.add_exception_handler(RequestValidationError, manejar_validacion)
-app.add_exception_handler(StarletteHTTPException, manejar_http)
 app.include_router(router_vehiculos)
 app.include_router(router_reservas)
 app.include_router(router_clientes)
