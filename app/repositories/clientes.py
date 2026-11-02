@@ -1,21 +1,29 @@
-"""Gestiona los clientes de la consecionaria."""
+
+"""Consultas ORM para la gestión de clientes."""
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.models import Cliente
 
 
-from app.repositories import datos
+def listar(session: Session) -> list[Cliente]:
+    """Obtiene todos los clientes ordenados por ID."""
+    return list(session.scalars(select(Cliente).order_by(Cliente.id)))
 
 
-def asignar_id() -> int:
-    return datos.siguiente_id("clientes")
+def obtener(session: Session, cliente_id: int) -> Cliente | None:
+    """Busca un cliente por su ID."""
+    return session.get(Cliente, cliente_id)
 
 
-def listar() ->list[dict[str, object]]:
-    return[dict(registro) for registro in datos.clientes.values()]
+def buscar_por_rut(session: Session, rut: str) -> Cliente | None:
+    """Busca un cliente por su RUT."""
+    return session.scalar(
+        select(Cliente).where(Cliente.rut == rut)
+    )
 
 
-def obtener(cliente_id: int) -> dict[str, object] | None:
-    registro = datos.clientes.get(cliente_id)
-    return dict(registro) if registro is not None else None
-
-
-def guardar(registro: dict[str, object]) -> None:
-    datos.clientes[registro["id"]] = dict(registro)
+def guardar(session: Session, cliente: Cliente) -> None:
+    """Agrega un cliente a la sesión de base de datos."""
+    session.add(cliente)
