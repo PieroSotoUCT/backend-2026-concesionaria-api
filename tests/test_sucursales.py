@@ -1,16 +1,19 @@
 """Pruebas aisladas del módulo de sucursales."""
 
 import os
+import tempfile
 import unittest
 from unittest.mock import patch
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, delete
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-# Configura SQLite en memoria antes de importar la aplicación.
-os.environ["CONCESIONARIA_DATABASE_URL"] = "sqlite://"
+# La aplicación comparte la URL temporal con las pruebas de reservas.
+TEST_DATABASE_PATH = Path(tempfile.gettempdir()) / f"concesionaria-tests-{os.getpid()}.db"
+os.environ["CONCESIONARIA_DATABASE_URL"] = f"sqlite:///{TEST_DATABASE_PATH.as_posix()}"
 
 from app.db import Base
 from app.models import Sucursal

@@ -363,8 +363,10 @@ class PruebasReservasHTTP(unittest.TestCase):
         return next(v["id"] for v in self.vehiculos() if v["estado"] == estado)
 
     def cuerpo(self, **cambios):
+        status, clientes = self.solicitar("GET", "/clientes")
+        self.assertEqual(status, 200)
         base = {
-            "cliente_id": 1,
+            "cliente_id": clientes[0]["id"],
             "vehiculo_id": self.vehiculo_id("disponible"),
             "fecha_vencimiento": (date.today() + timedelta(days=5)).isoformat(),
             "monto_reserva": 450000,
