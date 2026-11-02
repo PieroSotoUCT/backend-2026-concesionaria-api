@@ -1,0 +1,126 @@
+@baseUrl = http://127.0.0.1:8000
+
+### Listar clientes
+GET {{baseUrl}}/clientes
+Accept: application/json
+
+### Crear cliente
+# Ejecutar primero para registrar un cliente de prueba.
+POST {{baseUrl}}/clientes
+Content-Type: application/json
+
+{
+  "rut": "12345678-5",
+  "nombre": "Cliente de Prueba",
+  "correo": "prueba@example.com",
+  "telefono": "56912345678",
+  "direccion": "Calle de Prueba 123"
+}
+
+### Obtener cliente por ID
+# Sustituir el ID por uno existente de la respuesta anterior.
+GET {{baseUrl}}/clientes/1
+Accept: application/json
+
+### Obtener cliente inexistente
+GET {{baseUrl}}/clientes/999999
+Accept: application/json
+
+### Crear cliente con RUT duplicado
+POST {{baseUrl}}/clientes
+Content-Type: application/json
+
+{
+  "rut": "12345678-5",
+  "nombre": "Cliente Duplicado",
+  "correo": "duplicado@example.com",
+  "telefono": "56912345679",
+  "direccion": "Otra Calle 456"
+}
+
+### Crear cliente con correo inválido
+POST {{baseUrl}}/clientes
+Content-Type: application/json
+
+{
+  "rut": "22222222-2",
+  "nombre": "Cliente Inválido",
+  "correo": "correo-invalido",
+  "telefono": "56912345670",
+  "direccion": "Temuco"
+}
+
+### Crear cliente con campo adicional
+POST {{baseUrl}}/clientes
+Content-Type: application/json
+
+{
+  "rut": "33333333-3",
+  "nombre": "Cliente Adicional",
+  "correo": "adicional@example.com",
+  "telefono": "56912345671",
+  "direccion": "Temuco",
+  "edad": 25
+}
+
+### Crear cliente con nombre compuesto por espacios
+POST {{baseUrl}}/clientes
+Content-Type: application/json
+
+{
+  "rut": "44444444-4",
+  "nombre": "   ",
+  "correo": "espacios@example.com",
+  "telefono": "56912345672",
+  "direccion": "Temuco"
+}
+
+### Listar sucursales
+GET {{baseUrl}}/sucursales
+Accept: application/json
+
+### Crear sucursal
+POST {{baseUrl}}/sucursales
+Content-Type: application/json
+
+{
+  "nombre": "Sucursal de Prueba",
+  "direccion": "Avenida de Prueba 123",
+  "ciudad": "Temuco",
+  "telefono": "56912345680",
+  "horario_atencion": "Lunes a viernes 09:00-18:00"
+}
+
+### Obtener sucursal por ID
+# Sustituir el ID por uno existente de la respuesta anterior.
+GET {{baseUrl}}/sucursales/1
+Accept: application/json
+
+### Obtener sucursal inexistente
+GET {{baseUrl}}/sucursales/999999
+Accept: application/json
+
+### Crear sucursal con ciudad inválida
+POST {{baseUrl}}/sucursales
+Content-Type: application/json
+
+{
+  "nombre": "Sucursal Inválida",
+  "direccion": "Avenida de Prueba 123",
+  "ciudad": "   ",
+  "telefono": "56912345681",
+  "horario_atencion": "Lunes a viernes 09:00-18:00"
+}
+
+### Crear sucursal con campo adicional
+POST {{baseUrl}}/sucursales
+Content-Type: application/json
+
+{
+  "nombre": "Sucursal Adicional",
+  "direccion": "Avenida de Prueba 123",
+  "ciudad": "Temuco",
+  "telefono": "56912345682",
+  "horario_atencion": "Lunes a viernes 09:00-18:00",
+  "codigo_extra": "ABC"
+}
