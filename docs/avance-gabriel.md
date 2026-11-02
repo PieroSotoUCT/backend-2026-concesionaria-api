@@ -1,157 +1,112 @@
 # Avance de Gabriel — Parte 2
 
-## 1. Responsabilidades
+## Responsabilidades
 
 Implementación de los módulos de clientes y sucursales, carga de datos ficticios mediante ORM, documentación y pruebas asociadas.
 
 Este documento registra el avance individual de Gabriel. La integración general del proyecto corresponde al equipo.
 
-## 2. Estado general
+## Estado general
 
-- [x] Implementación de entidades, modelos ORM, DTO, repositorios, servicios y rutas de clientes.
-- [x] Implementación de entidades, modelos ORM, DTO, repositorios, servicios y rutas de sucursales.
+- [x] Implementación de entidades, DTO, repositorios, servicios y rutas de clientes.
+- [x] Implementación de entidades, DTO, repositorios, servicios y rutas de sucursales.
 - [x] Implementación de las seis rutas HTTP asignadas.
-- [x] Normalización del RUT.
-- [x] Detección de RUT duplicados mediante consulta y restricción UNIQUE.
-- [x] Validación del formato del correo electrónico mediante `EmailStr`.
+- [x] Normalización del RUT y detección de duplicados.
+- [x] Validación de formato de correo electrónico mediante `EmailStr`.
 - [x] Rechazo de campos compuestos únicamente por espacios.
-- [x] Normalización de espacios exteriores mediante `str_strip_whitespace=True`.
-- [x] Manejo específico de errores de integridad asociados al RUT duplicado.
-- [x] Verificación de rollback ante conflictos de unicidad.
-- [x] Eliminación del DTO duplicado de clientes.
-- [x] Revisión de ejemplos y respuestas OpenAPI de los seis endpoints.
-- [x] Seeder ORM con datos ficticios de las cuatro entidades.
+- [x] Manejo verificado de errores de integridad y rollback.
+- [x] Unificación definitiva de los DTO de clientes.
+- [x] Verificación de las respuestas HTTP documentadas en OpenAPI.
+- [x] Seeder ORM con al menos dos registros por entidad.
 - [x] Seeder con suficientes vehículos para demostrar paginación.
-- [x] Verificación de relaciones ORM del seeder.
-- [x] Verificación del rechazo de una segunda ejecución del seeder.
-- [x] Prueba aislada del seeder en SQLite en memoria.
-- [x] Archivo de pruebas HTTP manuales ampliado.
+- [x] Prueba de relaciones ORM del seeder.
+- [x] Prueba de rechazo de segunda ejecución del seeder.
+- [ ] Verificación del seeder después de aplicar migraciones Alembic.
+- [x] Archivo de pruebas HTTP manuales implementado y ampliado.
 - [x] Pruebas automatizadas de clientes y sucursales.
-- [x] Revisión de calidad del código con Ruff en los módulos correspondientes.
-- [x] Documentación de módulos y diagramas actualizada.
-- [ ] Verificación del seeder después de aplicar migraciones Alembic en una base temporal.
-- [ ] Verificación de persistencia después de reiniciar un proceso.
-- [ ] Ejecución y registro de todas las pruebas HTTP manuales.
-- [ ] Revisión final de documentación y diagramas.
-- [ ] Revisión final de Git y preparación del commit final.
-- [ ] Verificación final de los criterios de entrega individual.
-- [ ] Preparación del Pull Request hacia `main`.
+- [x] Ampliación de pruebas para cubrir validaciones y conflictos de integridad.
+- [ ] Prueba de persistencia después de reiniciar un proceso.
+- [x] Documentos de módulos y diagramas actualizados.
+- [x] Revisión de documentación y diagramas.
+- [x] Verificación de Ruff en los archivos de responsabilidad individual.
+- [x] Revisión de Git, commits y publicación de la rama.
+- [ ] Verificación final de todos los criterios de entrega individual.
 
-## 3. Clientes
+## Clientes
 
-Se implementaron los siguientes endpoints:
+Endpoints implementados:
 
-| Método | Endpoint | Respuesta exitosa |
-|---|---|---|
-| POST | `/clientes` | 201 Created |
-| GET | `/clientes` | 200 OK |
-| GET | `/clientes/{id}` | 200 OK |
+- `POST /clientes` — HTTP 201.
+- `GET /clientes` — HTTP 200.
+- `GET /clientes/{id}` — HTTP 200.
 
-### Implementación
+El servidor asigna automáticamente el ID.
 
-El módulo utiliza SQLAlchemy ORM para registrar, listar y consultar clientes.
+Se utiliza SQLAlchemy ORM para registrar y consultar clientes.
 
-El servidor asigna automáticamente el identificador al crear un cliente.
+El esquema `ClienteCrear` utiliza Pydantic para validar los datos de entrada.
 
-El esquema `ClienteCrear` establece las siguientes validaciones:
+Las validaciones incluyen:
 
-| Campo | Restricciones |
-|---|---|
-| `rut` | Texto de 3 a 20 caracteres |
-| `nombre` | Texto de 2 a 100 caracteres |
-| `correo` | Dirección de correo válida |
-| `telefono` | Texto de 1 a 30 caracteres |
-| `direccion` | Texto de 1 a 200 caracteres |
+- RUT de entre 3 y 20 caracteres.
+- Nombre de entre 2 y 100 caracteres.
+- Correo electrónico válido mediante `EmailStr`.
+- Teléfono de entre 1 y 30 caracteres.
+- Dirección de entre 1 y 200 caracteres.
+- Rechazo de campos adicionales.
+- Eliminación de espacios exteriores mediante `str_strip_whitespace=True`.
 
-Se utiliza `ConfigDict` con las siguientes opciones:
+### Normalización y duplicidad del RUT
 
-- `extra="forbid"`: rechaza campos adicionales.
-- `str_strip_whitespace=True`: elimina espacios al inicio y al final de los textos.
-
-El correo electrónico se valida mediante `EmailStr`.
-
-### Normalización del RUT
-
-El servicio normaliza el RUT mediante:
+El RUT se normaliza mediante:
 
 1. Eliminación de puntos.
 2. Eliminación de espacios.
 3. Conversión de letras a mayúsculas.
 
-Se evita registrar clientes con el mismo RUT normalizado.
+Se implementó una consulta previa para detectar RUT duplicados y una restricción UNIQUE en la base de datos.
 
-La unicidad se respalda mediante una restricción UNIQUE en la base de datos.
+Cuando se produce un conflicto de unicidad, el servicio devuelve:
 
-### Manejo de duplicados
+- HTTP 409.
+- Código `DUPLICATE_RESOURCE`.
 
-Se implementó la función `_es_rut_duplicado()` para identificar específicamente los errores de unicidad de la columna `clientes.rut`.
+También se implementó `_es_rut_duplicado()` para distinguir específicamente los conflictos de RUT de otros errores de integridad.
 
-Cuando se detecta un conflicto, el servicio devuelve:
+### Manejo transaccional
 
-- HTTP: `409`.
-- Código: `DUPLICATE_RESOURCE`.
+Se verificó que una violación real de unicidad produce un rollback completo.
 
-Los errores de integridad que no corresponden a un RUT duplicado se vuelven a propagar, evitando convertirlos incorrectamente en conflictos de duplicidad.
+La prueba comprobó que no quedaran inserciones parciales después del conflicto.
 
-También se comprobó que una transacción fallida realiza rollback y no conserva inserciones parciales.
+Se incorporaron pruebas automatizadas para verificar tanto la detección del error como su respuesta controlada.
 
-## 4. Sucursales
+## Sucursales
 
-Se implementaron los siguientes endpoints:
+Endpoints implementados:
 
-| Método | Endpoint | Respuesta exitosa |
-|---|---|---|
-| POST | `/sucursales` | 201 Created |
-| GET | `/sucursales` | 200 OK |
-| GET | `/sucursales/{id}` | 200 OK |
+- `POST /sucursales` — HTTP 201.
+- `GET /sucursales` — HTTP 200.
+- `GET /sucursales/{id}` — HTTP 200.
 
-### Implementación
+El servidor asigna automáticamente el ID.
 
-El módulo utiliza SQLAlchemy ORM para registrar, listar y consultar sucursales.
+Se utiliza SQLAlchemy ORM para registrar, listar y consultar sucursales.
 
-El servidor asigna automáticamente el identificador.
+Las validaciones del DTO incluyen:
 
-El esquema `SucursalCrear` establece las siguientes restricciones:
+- Nombre de entre 2 y 100 caracteres.
+- Dirección de entre 1 y 200 caracteres.
+- Ciudad de entre 2 y 100 caracteres.
+- Teléfono de entre 1 y 30 caracteres.
+- Horario de atención de entre 1 y 120 caracteres.
+- Rechazo de campos adicionales.
+- Eliminación de espacios exteriores.
+- Rechazo de valores compuestos únicamente por espacios.
 
-| Campo | Restricciones |
-|---|---|
-| `nombre` | Texto de 2 a 100 caracteres |
-| `direccion` | Texto de 1 a 200 caracteres |
-| `ciudad` | Texto de 2 a 100 caracteres |
-| `telefono` | Texto de 1 a 30 caracteres |
-| `horario_atencion` | Texto de 1 a 120 caracteres |
+Se realizaron comprobaciones de validación para los campos de sucursal y se incorporaron pruebas automatizadas para el módulo.
 
-Se utiliza:
-
-- `extra="forbid"` para rechazar campos adicionales.
-- `str_strip_whitespace=True` para normalizar espacios exteriores.
-
-Los valores que quedan vacíos después de la normalización son rechazados por las restricciones de longitud.
-
-## 5. Documentación OpenAPI
-
-Se verificó el esquema OpenAPI generado por FastAPI para los seis endpoints.
-
-Resultados obtenidos:
-
-| Endpoint | Respuestas declaradas |
-|---|---|
-| `GET /clientes` | 200 |
-| `POST /clientes` | 201, 409, 422 |
-| `GET /clientes/{id}` | 200, 404, 422 |
-| `GET /sucursales` | 200 |
-| `POST /sucursales` | 201, 422 |
-| `GET /sucursales/{id}` | 200, 404, 422 |
-
-La comprobación se realizó mediante:
-
-```bash
-python -c "from app.main import app; esquema = app.openapi(); [print(ruta, metodo.upper(), operacion.get('responses', {}).keys()) for ruta, metodos in esquema['paths'].items() if ruta.startswith(('/clientes', '/sucursales')) for metodo, operacion in metodos.items()]"
-```
-
-Los seis endpoints aparecen correctamente registrados en OpenAPI.
-
-## 6. Datos de demostración
+## Datos de demostración
 
 Archivo: `app/datos_demo.py`
 
@@ -161,11 +116,9 @@ Comando de ejecución:
 python -m app.datos_demo
 ```
 
-El seeder utiliza SQLAlchemy ORM para insertar datos ficticios relacionados de clientes, sucursales, vehículos y reservas.
+El seeder carga datos ficticios mediante SQLAlchemy ORM y establece las relaciones entre las cuatro entidades.
 
-### Registros de demostración
-
-La carga verificada en una base SQLite aislada contempla:
+### Registros comprobados
 
 | Entidad | Cantidad |
 |---|---:|
@@ -175,15 +128,11 @@ La carga verificada en una base SQLite aislada contempla:
 | Reservas | 2 |
 | **Total** | **17** |
 
-Los vehículos incorporan distintas marcas, modelos, años, precios, kilometrajes, transmisiones y condiciones.
+### Prueba aislada del seeder
 
-### Verificación aislada
-
-La prueba se ejecutó utilizando SQLite en memoria mediante:
+Se realizó una prueba utilizando SQLite en memoria mediante la variable de entorno:
 
 `CONCESIONARIA_DATABASE_URL=sqlite://`
-
-Se inicializaron las tablas ORM y posteriormente se ejecutó el seeder.
 
 Resultados:
 
@@ -196,7 +145,7 @@ Resultados:
 7. Vehículos con sucursal válida: 11 de 11.
 8. Reservas con cliente y vehículo válidos: 2 de 2.
 
-Resultado final:
+Resultado:
 
 ```text
 Clientes, sucursales, vehiculos, reservas: [2, 2, 11, 2]
@@ -205,11 +154,9 @@ Reservas con relaciones validas: 2 / 2
 RESULTADO: CORRECTO
 ```
 
-La prueba se realizó en una base en memoria, sin modificar la base de desarrollo `concesionaria.db`.
-
 ### Paginación de vehículos
 
-También se verificó el servicio de listado de vehículos con los 11 registros:
+Se verificó el funcionamiento del servicio de paginación:
 
 | Consulta | Resultado |
 |---|---:|
@@ -220,41 +167,35 @@ También se verificó el servicio de listado de vehículos con los 11 registros:
 
 ### Protección contra duplicaciones
 
-El seeder comprueba que las cuatro tablas estén vacías antes de insertar datos.
+El seeder verifica que las cuatro tablas estén vacías antes de insertar los datos.
 
 Si encuentra registros existentes, rechaza la operación mediante:
 
-```text
-RuntimeError:
-Los datos demo requieren una base de datos completamente vacía.
-```
+`RuntimeError: Los datos demo requieren una base de datos completamente vacía.`
 
-En una comprobación anterior sobre la base de prueba persistente, se verificó que la segunda ejecución no modificara los conteos existentes:
+También se verificó que una segunda ejecución no modificara los registros existentes.
+
+En una comprobación sobre la base SQLite temporal se conservaron los siguientes conteos:
 
 ```text
 Clientes, sucursales, vehiculos, reservas: [3, 3, 11, 2]
 CORRECTO: registros conservados
 ```
 
-La prueba aislada de la carga ampliada y la prueba de rechazo de una segunda ejecución se realizaron por separado.
-
 ### Pendientes del seeder
 
-- Verificar la carga después de aplicar migraciones Alembic en una base temporal.
-- Documentar el procedimiento completo de preparación de la base.
-- Coordinar con Piero la inicialización opcional de datos desde `app/main.py`.
+- Verificar su ejecución después de aplicar migraciones Alembic en una base temporal.
+- Coordinar con Piero cualquier integración opcional de la carga de datos desde `app/main.py`.
 
-## 7. Pruebas automatizadas
+## Pruebas de clientes y sucursales
 
-Se implementaron pruebas aisladas para los módulos de clientes y sucursales utilizando `unittest`, `TestClient` y una base SQLite de prueba.
+Se implementaron pruebas aisladas utilizando:
 
-La suite actual contempla:
-
-| Módulo | Pruebas aprobadas |
-|---|---:|
-| Clientes | 9 |
-| Sucursales | 5 |
-| **Total** | **14** |
+- `unittest`.
+- `FastAPI TestClient`.
+- SQLAlchemy.
+- SQLite en memoria.
+- `unittest.mock.patch` para aislar las sesiones de prueba.
 
 Comando ejecutado:
 
@@ -262,158 +203,153 @@ Comando ejecutado:
 python -m unittest tests.test_clientes tests.test_sucursales -v
 ```
 
-**Resultado: 14 pruebas aprobadas.**
+### Resultado final
 
-Las pruebas de clientes incluyen:
+**14 pruebas automatizadas aprobadas.**
 
-- Creación y normalización del RUT.
+| Módulo | Pruebas aprobadas |
+|---|---:|
+| Clientes | 9 |
+| Sucursales | 5 |
+| **Total** | **14** |
+
+### Casos comprobados de clientes
+
+- Creación de clientes.
+- Normalización del RUT.
 - Listado de clientes.
 - Consulta de clientes existentes.
 - Respuesta 404 para clientes inexistentes.
 - Respuesta 409 para RUT duplicados.
 - Validación de correo electrónico.
-- Rechazo de datos obligatorios faltantes.
+- Respuesta 422 para datos faltantes.
 - Distinción entre errores de unicidad y otros errores de integridad.
+- Conflicto real de unicidad y rollback.
 
-Las pruebas de sucursales verifican las operaciones implementadas y las validaciones correspondientes al módulo.
+### Casos comprobados de sucursales
 
-También se incorporó una comprobación específica para distinguir una violación UNIQUE de RUT de un error de integridad diferente.
+- Creación y asignación automática de ID.
+- Validación de datos incorrectos.
+- Listado de sucursales.
+- Consulta de sucursales existentes.
+- Respuesta 404 para sucursales inexistentes.
 
-## 8. Pruebas HTTP manuales
+### Comprobaciones adicionales
+
+Se realizaron comprobaciones directas con Pydantic para verificar el rechazo de campos compuestos únicamente por espacios, tanto en clientes como en sucursales.
+
+También se comprobó el rechazo de correos inválidos y campos adicionales.
+
+### Pruebas HTTP manuales
 
 Archivo:
 
 `tests_manual/clientes_sucursales.http`
 
-Se amplió el archivo de solicitudes para REST Client de Visual Studio Code.
+Se preparó y amplió el archivo de solicitudes para REST Client de Visual Studio Code.
 
-Actualmente contiene solicitudes para comprobar:
+Incluye operaciones de creación, listado y consulta, además de solicitudes para comprobar errores de validación, recursos inexistentes y RUT duplicados.
 
-### Clientes
+Las solicitudes adicionales preparadas no se consideran automáticamente pruebas manuales ejecutadas.
 
-- Listado.
-- Creación.
-- Consulta de cliente existente.
-- Consulta de cliente inexistente.
-- RUT duplicado.
-- Correo inválido.
-- Campo adicional.
-- Nombre compuesto únicamente por espacios.
+### Pendiente de pruebas
 
-### Sucursales
+- Comprobar persistencia después de reiniciar un proceso de aplicación.
+- Completar el registro de ejecución individual de todas las solicitudes HTTP manuales.
 
-- Listado.
-- Creación.
-- Consulta de sucursal existente.
-- Consulta de sucursal inexistente.
-- Ciudad compuesta únicamente por espacios.
-- Campo adicional.
+## Documentación
 
-Las solicitudes están preparadas para ejecución manual. La ampliación del archivo no se considera evidencia de que todas las solicitudes hayan sido ejecutadas y aprobadas.
+Se actualizaron los siguientes archivos:
 
-## 9. Calidad del código
+- `docs/clientes-sucursales.md`: descripción de los módulos, endpoints, validaciones y errores.
+- `docs/diagramas.md`: diagramas de clases y datos, atributos, claves y relaciones.
+- `docs/avance-gabriel.md`: registro actualizado del trabajo individual y sus evidencias.
 
-Se ejecutó Ruff sobre los archivos correspondientes a la responsabilidad de clientes y sucursales.
+Se revisaron las relaciones entre clientes, sucursales, vehículos y reservas, además de las claves primarias, foráneas y la restricción UNIQUE del RUT.
 
-Comando utilizado:
+## Calidad del código
 
-```bash
-python -m ruff check \
-app/datos_demo.py \
-app/repositories/clientes.py \
-app/repositories/sucursales.py \
-app/routers/clientes.py \
-app/routers/sucursales.py \
-app/schemas/clientes.py \
-app/schemas/sucursal.py \
-app/services/clientes.py \
-app/services/sucursales.py \
-tests/test_clientes.py \
-tests/test_sucursales.py
-```
+Se ejecutó Ruff sobre los archivos correspondientes a clientes, sucursales, seeder y pruebas.
 
-**Resultado:**
+Resultado:
 
 ```text
 All checks passed!
 ```
 
-También se ejecutó Ruff sobre el proyecto completo:
+También se ejecutó Ruff sobre el proyecto completo.
 
-```bash
-python -m ruff check app tests
-```
+En esa revisión se encontraron nueve observaciones en archivos compartidos y módulos de vehículos y reservas. Estas observaciones no corresponden a los archivos de mi responsabilidad que fueron verificados individualmente.
 
-En esa revisión se identificaron nueve observaciones en archivos compartidos y módulos de vehículos y reservas.
-
-Estas observaciones no corresponden a los archivos de clientes y sucursales revisados individualmente.
-
-Se ejecutó anteriormente:
+Se ejecutó:
 
 ```bash
 git diff --check
 ```
 
-Sin observaciones.
+Resultado: sin observaciones.
 
-## 10. Documentación
+## Calidad y Git
 
-Se dispone de los siguientes documentos:
-
-- `docs/clientes-sucursales.md`: describe los módulos, validaciones, endpoints, persistencia y pruebas.
-- `docs/diagramas.md`: representa las entidades, atributos, claves y relaciones del sistema.
-- `docs/avance-gabriel.md`: registra las responsabilidades, implementaciones y evidencias de esta parte del proyecto.
-
-Los documentos de módulos y diagramas fueron actualizados durante la revisión final para reflejar los modelos ORM y las validaciones implementadas.
-
-## 11. Estado de Git
-
-La rama de trabajo actual es:
+Rama de trabajo:
 
 `feat/parte-2-clientes-sucursales`
 
-La rama se encontraba sincronizada con:
+Se registraron ocho commits en el historial de trabajo de la rama.
 
-`origin/feat/parte-2-clientes-sucursales`
+### Commit final
 
-En la última revisión del historial se identificaron siete commits existentes:
+`28598f6`
 
-1. `96e9a7a` — Adaptar esquemas a ORM.
-2. `24a0068` — Implementar repositorio ORM.
-3. `7123037` — Integrar servicio ORM de clientes.
-4. `736ef4a` — Integrar persistencia ORM de sucursales.
-5. `7800b1b` — Agregar validador de correo.
-6. `431642c` — Agregar pruebas automatizadas.
-7. `5476783` — Completar módulos, datos demo y documentación.
+Mensaje:
 
-Durante la auditoría se identificaron modificaciones pendientes en archivos de implementación, pruebas y documentación.
+`feat(clientes-sucursales): completar validaciones, seeder y documentación`
 
-Los cambios todavía deben revisarse y organizarse antes de preparar el commit final.
+El commit incluye:
 
-## 12. Pendientes de entrega
+- Validaciones adicionales.
+- Manejo de conflictos de integridad.
+- Ampliación del seeder.
+- Actualización de esquemas.
+- Ampliación de pruebas.
+- Documentación y diagramas.
 
-- [ ] Verificar el seeder después de aplicar migraciones Alembic.
-- [ ] Comprobar persistencia tras reiniciar un proceso.
-- [ ] Ejecutar y registrar las solicitudes HTTP manuales.
-- [ ] Revisar el estado final de todos los archivos modificados.
-- [ ] Revisar los nueve avisos globales de Ruff con los responsables correspondientes.
-- [ ] Ejecutar las verificaciones finales del proyecto.
-- [ ] Preparar el commit final de los cambios pendientes.
-- [ ] Verificar la publicación de los cambios en GitHub.
-- [ ] Preparar el Pull Request hacia `main`.
+Se publicó correctamente la rama en GitHub.
 
-## 13. Estado de entrega
+### Pull Request
 
-La implementación de los módulos de clientes y sucursales está desarrollada y cuenta con 14 pruebas automatizadas aprobadas.
+Pull Request: [#5 — backend-2026-concesionaria-api](https://github.com/PieroSotoUCT/backend-2026-concesionaria-api/pull/5)
 
-Se verificaron las validaciones de entrada, la normalización del RUT, la restricción de unicidad, el manejo de conflictos de integridad y las relaciones ORM.
+Rama de origen:
 
-El seeder ampliado fue probado en SQLite en memoria, generando 17 registros relacionados correctamente y permitiendo demostrar la paginación de los 11 vehículos.
+`feat/parte-2-clientes-sucursales`
 
-Los módulos correspondientes a la responsabilidad individual de Gabriel pasan las verificaciones de Ruff.
+Rama de destino:
 
-La documentación de módulos y diagramas fue actualizada.
+`main`
 
-La entrega individual todavía requiere completar las verificaciones finales, revisar los cambios pendientes de Git y preparar el commit y Pull Request correspondientes.
+El commit `28598f6` aparece en el Pull Request.
 
-La integración general de vehículos, reservas y componentes compartidos corresponde al trabajo coordinado del equipo y de sus respectivos responsables.
+Estado: abierto, pendiente de revisión e integración por parte del equipo.
+
+## Estado de entrega
+
+La implementación individual de los módulos de clientes y sucursales se encuentra completada y publicada para revisión.
+
+Se verificaron las operaciones HTTP asignadas, las validaciones, la normalización del RUT, la restricción de unicidad, el manejo transaccional y las relaciones ORM.
+
+Se obtuvieron 14 pruebas automatizadas aprobadas y Ruff pasó correctamente en los archivos correspondientes a mi responsabilidad.
+
+El seeder fue probado en SQLite en memoria, generando 17 registros relacionados y permitiendo demostrar la paginación de vehículos.
+
+La documentación de módulos y diagramas fue actualizada y el trabajo se publicó mediante el Pull Request #5.
+
+### Verificaciones que permanecen pendientes
+
+- Ejecución del seeder después de aplicar migraciones Alembic en una base temporal.
+- Prueba de persistencia después de reiniciar un proceso.
+- Revisión e integración del Pull Request por parte del equipo.
+
+La responsabilidad individual de implementación de Gabriel está completada. Las verificaciones pendientes y la integración general deben distinguirse de las actividades de desarrollo ya finalizadas.
+
+La implementación de vehículos, reservas y componentes compartidos corresponde a sus respectivos responsables.
