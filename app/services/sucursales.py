@@ -1,37 +1,58 @@
-"""Operaciones transaccionales de sucursales."""
 
-from sqlalchemy import select
+"""Operaciones transaccionales y reglas de negocio de sucursales."""
 
 from app.db import SessionLocal, initialize_database
 from app.errores import ErrorAplicacion
 from app.models import Sucursal
+from app.repositories import sucursales as repositorio_sucursales
 from app.schemas.sucursal import SucursalCrear
 
 initialize_database()
 
 
 def _registro(sucursal: Sucursal) -> dict[str, object]:
-    return {campo: getattr(sucursal, campo) for campo in
-            ("id", "nombre", "direccion", "ciudad", "telefono", "horario_atencion")}
+    """Convierte una sucursal ORM en un diccionario de respuesta."""
+    return {
+        campo: getattr(sucursal, campo)
+        for campo in (
+            "id",
+            "nombre",
+            "direccion",
+            "ciudad",
+            "telefono",
+            "horario_atencion",
+        )
+    }
 
 
 def crear_sucursal(entrada: SucursalCrear) -> dict[str, object]:
+    """Registra una nueva sucursal."""
     with SessionLocal.begin() as session:
         sucursal = Sucursal(**entrada.model_dump())
-        session.add(sucursal)
+
+        repositorio_sucursales.guardar(session, sucursal)
         session.flush()
+
         return _registro(sucursal)
 
 
 def listar_sucursales() -> list[dict[str, object]]:
+    """Devuelve todas las sucursales registradas."""
     with SessionLocal() as session:
-        return [_registro(sucursal) for sucursal in
-                session.scalars(select(Sucursal).order_by(Sucursal.id))]
+        sucursales = repositorio_sucursales.listar(session)
+        return [_registro(sucursal) for sucursal in sucursales]
 
 
-def obtener_sucursal(id: int) -> dict[str, object]:
+def obtener_sucursal(sucursal_id: int) -> dict[str, object]:
+    """Busca una sucursal por su ID."""
     with SessionLocal() as session:
-        sucursal = session.get(Sucursal, id)
+        sucursal = repositorio_sucursales.obtener(session, sucursal_id)
+
         if sucursal is None:
-            raise ErrorAplicacion(404, "RESOURCE_NOT_FOUND", "La sucursal no existe")
+            raise ErrorAplicacion(
+                404,
+                "RESOURCE_NOT_FOUND",
+                f"No existe una sucursal con ID {sucursal_id}.",
+            )
+
         return _registro(sucursal)
