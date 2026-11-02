@@ -183,6 +183,5 @@ Desde una base nueva, Alembic y el seeder crearon 2 clientes, 2 sucursales,
 solicitudes HTTP resultaron correctas y un dato permaneció tras reiniciar
 Uvicorn sin repetir el seeder. El detalle está en
 `docs/evidencias-pruebas.md`. Se actualizaron README y PROGRESO para reflejar
-el estado integrado y se preparó `docs/guion-defensa.md` para el estudio del
-equipo. Las notas anteriores de este archivo conservan el estado histórico
-de cada etapa.
+el estado integrado. Las notas anteriores de este archivo conservan el estado
+histórico de cada etapa.
